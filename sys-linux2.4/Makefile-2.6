@@ -1,0 +1,19 @@
+
+# Use this makefile if building for a 2.6 based system. Copy this
+# file Makefile-2.6 to Makefile, then type "make"
+#
+ifneq ($(KERNELRELEASE),)
+
+EXTRA_CFLAGS += -I$(M)/../sys-common
+obj-m := ise.o
+ise-objs := linux.o ucr.o ucrx.o isecons.o dev_ise.o dev_jse.o dev_ejse.o
+
+else
+
+KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+PWD := $(shell pwd)
+
+default:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+endif

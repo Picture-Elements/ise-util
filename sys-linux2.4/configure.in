@@ -1,0 +1,20 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(ucr.c)
+
+AC_CANONICAL_HOST
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+
+# --
+# Compiling kernel targets sometimes requires special flags, in order
+# to reflect the special execution environment.
+case $host_cpu
+in
+alpha*) CFLAGS="$CFLAGS -mno-fp-regs -ffixed-8"
+        ;;
+*)      ;;
+esac
+
+AC_OUTPUT(Makefile)

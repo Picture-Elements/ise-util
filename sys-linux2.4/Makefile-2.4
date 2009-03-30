@@ -1,0 +1,174 @@
+# Generated automatically from Makefile.in by configure.
+# --
+# Copyright (c) 2001 Picture Elements, Inc.
+# Stephen Williams (steve@picturel.com)
+#
+# $Id: Makefile.in,v 1.5 2004/12/31 01:08:08 steve Exp $
+#
+#    This source code is free software; you can redistribute it
+#    and/or modify it in source code form under the terms of the GNU
+#    General Public License as published by the Free Software
+#    Foundation; either version 2 of the License, or (at your option)
+#    any later version. In order to redistribute the software in
+#    binary form, you will need a Picture Elements Binary Software
+#    License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+#
+#    You should also have recieved a copy of the Picture Elements
+#    Binary Software License offer along with the source. This offer
+#    allows you to obtain the right to redistribute the software in
+#    binary (compiled) form. If you have not received it, contact
+#    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
+
+
+# To compile the driver for your system, simply type "make". This will
+# build the ise.o that is the kernel module. To install the module,
+# type the command:
+#
+#   make modules_install
+#
+# This copies the module to the correct directory, then writes the
+# needed configuration details to the /etc/modules.conf file. This
+# Makefile is smart enough to detect that this last step is already
+# done, so it is safe to make modules_install over and over again.
+#
+# The device nodes you need are also created.
+SHELL = /bin/sh
+
+prefix = /usr/local
+exec_prefix = ${prefix}
+srcdir = .
+includedir = $(prefix)/include
+tsrcdir = $(prefix)/src/pei-ise
+
+kdir = /lib/modules/$(shell uname -r)/build
+
+
+CC = gcc
+LN_S = @LN_S@
+
+INSTALL = /usr/bin/install -c
+INSTALL_PROGRAM = ${INSTALL}
+INSTALL_DATA = ${INSTALL} -m 644
+
+CPPFLAGS =    -I. -I$(srcdir)/../sys-common -I$(kdir)/include
+CFLAGS = -g -O2
+LDFLAGS = 
+
+
+all: ise.o
+
+ise.o: linux.o ucr.o ucrx.o isecons.o dev_ise.o dev_jse.o dev_ejse.o
+	$(LD) -r -o ise.o linux.o ucr.o ucrx.o isecons.o dev_ise.o dev_jse.o dev_ejse.o
+
+install: installdirs headers_install src_install
+
+headers_install: $(includedir)/ucrif.h
+
+src_install: \
+   $(tsrcdir)/sys-common/ise_tables.h \
+   $(tsrcdir)/sys-common/protocol.txt \
+   $(tsrcdir)/sys-common/ucrif.h \
+   $(tsrcdir)/sys-linux2.4/linux.c \
+   $(tsrcdir)/sys-linux2.4/ucr.c \
+   $(tsrcdir)/sys-linux2.4/ucrx.c \
+   $(tsrcdir)/sys-linux2.4/isecons.c \
+   $(tsrcdir)/sys-linux2.4/dev_ise.c \
+   $(tsrcdir)/sys-linux2.4/dev_jse.c \
+   $(tsrcdir)/sys-linux2.4/dev_ejse.c \
+   $(tsrcdir)/sys-linux2.4/os.h \
+   $(tsrcdir)/sys-linux2.4/ucrpriv.h \
+   $(tsrcdir)/sys-linux2.4/Makefile
+
+modules_install: ise.o
+	cp ise.o /lib/modules/`uname -r`/kernel/drivers/char
+	@grep -v 'char-major-114' /etc/modules.conf || echo 'alias char-major-114 ise' >> /etc/modules.conf
+	/sbin/depmod -a
+	@[ -c /dev/ise0 ] || mknod --mode=0666 /dev/ise0 c 114 0
+	@[ -c /dev/ise1 ] || mknod --mode=0666 /dev/ise1 c 114 1
+	@[ -c /dev/ise2 ] || mknod --mode=0666 /dev/ise2 c 114 2
+	@[ -c /dev/ise3 ] || mknod --mode=0666 /dev/ise3 c 114 3
+	@[ -c /dev/isex0 ] || mknod --mode=0666 /dev/isex0 c 114 128
+	@[ -c /dev/isex1 ] || mknod --mode=0666 /dev/isex1 c 114 129
+	@[ -c /dev/isex2 ] || mknod --mode=0666 /dev/isex2 c 114 130
+	@[ -c /dev/isex3 ] || mknod --mode=0666 /dev/isex3 c 114 131
+
+installdirs: mkinstalldirs
+	$(srcdir)/mkinstalldirs $(includedir) $(tsrcdir)/sys-common $(tsrcdir)/sys-linux2.4
+
+$(includedir)/ucrif.h: $(srcdir)/../sys-common/ucrif.h
+	$(INSTALL_DATA) $(srcdir)/../sys-common/ucrif.h $(includedir)/ucrif.h
+
+uninstall:
+	rm -f $(includedir)/ucrif.h
+	rm -r $(tsrcdir)/sys-common $(tsrcdir)/sys-linux2.4
+
+clean:
+	rm -f *.o *~
+
+distclean: clean
+	rm -f Makefile config.cache config.status config.log
+
+
+linux.o: linux.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -DMODULE -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/linux.c
+
+ucr.o: ucr.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/ucr.c
+
+ucrx.o: ucrx.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/ucrx.c
+
+isecons.o: isecons.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/isecons.c
+
+dev_ise.o: dev_ise.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/dev_ise.c
+
+dev_jse.o: dev_jse.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/dev_jse.c
+
+dev_ejse.o: dev_ejse.c $(srcdir)/../sys-common/ucrif.h os.h ucrpriv.h
+	$(CC) -D__KERNEL__ $(CPPFLAGS) $(CFLAGS) -c $(srcdir)/dev_ejse.c
+
+#--
+# Rules for installing source files
+
+$(tsrcdir)/sys-common/ise_tables.h: ../sys-common/ise_tables.h
+	$(INSTALL_DATA) ../sys-common/ise_tables.h $(tsrcdir)/sys-common/ise_tables.h
+$(tsrcdir)/sys-common/protocol.txt: ../sys-common/protocol.txt
+	$(INSTALL_DATA) ../sys-common/protocol.txt $(tsrcdir)/sys-common/protocol.txt
+$(tsrcdir)/sys-common/ucrif.h: ../sys-common/ucrif.h
+	$(INSTALL_DATA) ../sys-common/ucrif.h $(tsrcdir)/sys-common/ucrif.h
+
+$(tsrcdir)/sys-linux2.4/linux.c: linux.c
+	$(INSTALL_DATA) linux.c $(tsrcdir)/sys-linux2.4/linux.c
+$(tsrcdir)/sys-linux2.4/ucr.c: ucr.c
+	$(INSTALL_DATA) ucr.c $(tsrcdir)/sys-linux2.4/ucr.c
+$(tsrcdir)/sys-linux2.4/ucrx.c: ucrx.c
+	$(INSTALL_DATA) ucrx.c $(tsrcdir)/sys-linux2.4/ucrx.c
+$(tsrcdir)/sys-linux2.4/isecons.c: isecons.c
+	$(INSTALL_DATA) isecons.c $(tsrcdir)/sys-linux2.4/isecons.c
+$(tsrcdir)/sys-linux2.4/dev_ise.c: dev_ise.c
+	$(INSTALL_DATA) dev_ise.c $(tsrcdir)/sys-linux2.4/dev_ise.c
+$(tsrcdir)/sys-linux2.4/dev_jse.c: dev_jse.c
+	$(INSTALL_DATA) dev_jse.c $(tsrcdir)/sys-linux2.4/dev_jse.c
+$(tsrcdir)/sys-linux2.4/dev_ejse.c: dev_ejse.c
+	$(INSTALL_DATA) dev_ejse.c $(tsrcdir)/sys-linux2.4/dev_ejse.c
+
+$(tsrcdir)/sys-linux2.4/os.h: os.h
+	$(INSTALL_DATA) os.h $(tsrcdir)/sys-linux2.4/os.h
+$(tsrcdir)/sys-linux2.4/ucrpriv.h: ucrpriv.h
+	$(INSTALL_DATA) ucrpriv.h $(tsrcdir)/sys-linux2.4/ucrpriv.h
+
+$(tsrcdir)/sys-linux2.4/Makefile: Makefile
+	$(INSTALL_DATA) Makefile $(tsrcdir)/sys-linux2.4/Makefile
+

@@ -1,0 +1,80 @@
+# --
+# Copyright (c) 2000 Picture Elements, Inc.
+# Stephen Williams (steve@picturel.com)
+#
+# $Id: Makefile.in,v 1.2 2004/12/31 00:24:41 steve Exp $
+#
+#    This source code is free software; you can redistribute it
+#    and/or modify it in source code form under the terms of the GNU
+#    General Public License as published by the Free Software
+#    Foundation; either version 2 of the License, or (at your option)
+#    any later version. In order to redistribute the software in
+#    binary form, you will need a Picture Elements Binary Software
+#    License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+#
+#    You should also have recieved a copy of the Picture Elements
+#    Binary Software License offer along with the source. This offer
+#    allows you to obtain the right to redistribute the software in
+#    binary (compiled) form. If you have not received it, contact
+#    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
+
+SHELL = /bin/sh
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+srcdir = @srcdir@
+libdir = $(exec_prefix)/lib
+bindir = $(exec_prefix)/bin
+includedir = $(prefix)/include
+
+VPATH = $(srcdir)
+
+CC = @CC@
+LN_S = @LN_S@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+
+CPPFLAGS = @CPPFLAGS@ @DEFS@ -I../ -I$(includedir)
+CFLAGS = -O
+LDFLAGS = @LDFLAGS@
+
+all: libiseio.so
+
+O = libiseio.o
+
+libiseio.so: $O
+	cc -shared -o libiseio.so $O
+
+install: all installdirs $(libdir)/libiseio.so $(includedir)/libiseio.h
+
+installdirs: mkinstalldirs
+	$(srcdir)/mkinstalldirs $(bindir) $(libdir) $(includedir)
+
+$(libdir)/libiseio.so: libiseio.so
+	$(INSTALL_PROGRAM) libiseio.so $(libdir)/libiseio.so
+
+$(includedir)/libiseio.h: $(srcdir)/../libiseio.h
+	$(INSTALL_DATA) $(srcdir)/../libiseio.h $(includedir)/libiseio.h
+
+uninstall:
+	rm -f $(includedir)/libiseio.h
+	rm -f $(libdir)/libiseio.so
+
+clean:
+	rm -f *.o *~ libiseio.so
+
+distclean: clean
+	rm -f Makefile config.cache config.status config.log
+
+libiseio.o: libiseio.c ../libiseio.h

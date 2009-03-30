@@ -1,0 +1,85 @@
+
+
+install: installdirs headers_install src_install
+
+uninstall:
+	rm -f $(includedir)/ucrif.h
+	rm -r $(tsrcdir)/sys-common $(tsrcdir)/sys-linux
+
+
+M ?= .
+
+INSTALL = /usr/bin/install -c
+INSTALL_PROGRAM = ${INSTALL}
+INSTALL_DATA = ${INSTALL} -m 644
+
+prefix = /usr
+includedir = $(prefix)/include
+tsrcdir = $(prefix)/src/pei-ise
+
+headers_install: $(includedir)/ucrif.h
+
+modules_install: ise.ko
+	cp ise.ko /lib/modules/`uname -r`/kernel/drivers/char
+	cp modprobe-ise /etc/modprobe.d/ise
+	/sbin/depmod -a
+
+$(includedir)/ucrif.h: $M/../sys-common/ucrif.h
+	$(INSTALL_DATA) $M/../sys-common/ucrif.h $(includedir)/ucrif.h
+
+installdirs: mkinstalldirs
+	$M/mkinstalldirs $(includedir) $(tsrcdir)/sys-common $(tsrcdir)/sys-linux
+src_install: \
+   $(tsrcdir)/sys-common/ise_tables.h \
+   $(tsrcdir)/sys-common/protocol.txt \
+   $(tsrcdir)/sys-common/ucrif.h \
+   $(tsrcdir)/sys-linux/linux.c \
+   $(tsrcdir)/sys-linux/ucr.c \
+   $(tsrcdir)/sys-linux/ucrx.c \
+   $(tsrcdir)/sys-linux/isecons.c \
+   $(tsrcdir)/sys-linux/dev_ise.c \
+   $(tsrcdir)/sys-linux/dev_jse.c \
+   $(tsrcdir)/sys-linux/dev_ejse.c \
+   $(tsrcdir)/sys-linux/os.h \
+   $(tsrcdir)/sys-linux/ucrpriv.h \
+   $(tsrcdir)/sys-linux/Makefile \
+   $(tsrcdir)/sys-linux/make_node.sh \
+   /etc/udev/rules.d/99-ise.rules
+
+
+$(tsrcdir)/sys-common/ise_tables.h: ../sys-common/ise_tables.h
+	$(INSTALL_DATA) ../sys-common/ise_tables.h $(tsrcdir)/sys-common/ise_tables.h
+$(tsrcdir)/sys-common/protocol.txt: ../sys-common/protocol.txt
+	$(INSTALL_DATA) ../sys-common/protocol.txt $(tsrcdir)/sys-common/protocol.txt
+$(tsrcdir)/sys-common/ucrif.h: ../sys-common/ucrif.h
+	$(INSTALL_DATA) ../sys-common/ucrif.h $(tsrcdir)/sys-common/ucrif.h
+
+$(tsrcdir)/sys-linux/linux.c: linux.c
+	$(INSTALL_DATA) linux.c $(tsrcdir)/sys-linux/linux.c
+$(tsrcdir)/sys-linux/ucr.c: ucr.c
+	$(INSTALL_DATA) ucr.c $(tsrcdir)/sys-linux/ucr.c
+$(tsrcdir)/sys-linux/ucrx.c: ucrx.c
+	$(INSTALL_DATA) ucrx.c $(tsrcdir)/sys-linux/ucrx.c
+$(tsrcdir)/sys-linux/isecons.c: isecons.c
+	$(INSTALL_DATA) isecons.c $(tsrcdir)/sys-linux/isecons.c
+$(tsrcdir)/sys-linux/dev_ise.c: dev_ise.c
+	$(INSTALL_DATA) dev_ise.c $(tsrcdir)/sys-linux/dev_ise.c
+$(tsrcdir)/sys-linux/dev_jse.c: dev_jse.c
+	$(INSTALL_DATA) dev_jse.c $(tsrcdir)/sys-linux/dev_jse.c
+$(tsrcdir)/sys-linux/dev_ejse.c: dev_ejse.c
+	$(INSTALL_DATA) dev_ejse.c $(tsrcdir)/sys-linux/dev_ejse.c
+
+$(tsrcdir)/sys-linux/os.h: os.h
+	$(INSTALL_DATA) os.h $(tsrcdir)/sys-linux/os.h
+$(tsrcdir)/sys-linux/ucrpriv.h: ucrpriv.h
+	$(INSTALL_DATA) ucrpriv.h $(tsrcdir)/sys-linux/ucrpriv.h
+
+$(tsrcdir)/sys-linux/Makefile: Makefile-2.6
+	$(INSTALL_DATA) Makefile-2.6 $(tsrcdir)/sys-linux/Makefile
+
+$(tsrcdir)/sys-linux/make_node.sh: make_node.sh
+	$(INSTALL_DATA) make_node.sh $(tsrcdir)/sys-linux/make_node.sh
+
+/etc/udev/rules.d/99-ise.rules: udev-ise.rules
+	sed -e 's;@tsrcdir@;$(tsrcdir);' udev-ise.rules > /etc/udev/rules.d/99-ise.rules
+	chmod +x /etc/udev/rules.d/99-ise.rules

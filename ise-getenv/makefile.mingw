@@ -1,0 +1,12 @@
+
+all: ise_getenv.exe ise_setenv.exe
+
+INC = -I"$(ISE)"
+LIB = -L"$(ISE)"
+
+ise_getenv.exe: ise_getenv.c
+	mingw32-gcc -o $@ $(INC) ise_getenv.c $(LIB) -liseio
+
+ise_setenv.exe: ise_setenv.c
+	mingw32-gcc -o $@ $(INC) ise_setenv.c $(LIB) -liseio
+

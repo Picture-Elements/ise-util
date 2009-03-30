@@ -1,0 +1,8 @@
+
+all: ucrpipe.exe
+
+ucrpipe.exe: ucrpipe.obj
+	mingw32-gcc -o $@ ucrpipe.obj
+
+ucrpipe.obj: ucrpipe.c
+	mingw32-gcc -c -I../sys-common -o $@ ucrpipe.c

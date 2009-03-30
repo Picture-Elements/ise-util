@@ -1,0 +1,227 @@
+/*
+ * Copyright (c) 2002-2004 Picture Elements, Inc.
+ *    Stephen Williams (steve@picturel.com)
+ *
+ *    This source code is free software; you can redistribute it
+ *    and/or modify it in source code form under the terms of the GNU
+ *    General Public License as published by the Free Software
+ *    Foundation; either version 2 of the License, or (at your option)
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program; if not, write to the Free Software
+ *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
+ */
+#ident "$Id: isecons.c,v 1.6 2009/03/30 21:54:37 steve Exp $"
+
+# include  "ucrif.h"
+# include  "os.h"
+# include  "ucrpriv.h"
+# include  <linux/kernel.h>
+# include  <linux/proc_fs.h>
+
+# define LOG_BUF_SIZE (16*1024)
+
+static struct proc_dir_entry*proc_isecons = 0;
+
+static struct isecons_s {
+      char*log_buf;
+      unsigned ptr;
+      unsigned fill;
+} cons = { 0, 0, 0 };
+
+static int isecons_read(char*page, char**start, off_t offset, int count,
+			int*eof, void*data);
+static int isecons_write(struct file*file, const char __user*buffer,
+			 unsigned long count, void*data);
+
+void isecons_init(void)
+{
+      cons.log_buf = vmalloc(LOG_BUF_SIZE);
+      proc_isecons = create_proc_entry("driver/isecons", S_IFREG|S_IRUGO|S_IWUGO, 0);
+      if (proc_isecons) {
+	    proc_isecons->read_proc = isecons_read;
+	    proc_isecons->write_proc = isecons_write;
+	    proc_isecons->data = "isecons";
+      }
+
+      cons.ptr = 0;
+      cons.fill = 0;
+}
+
+void isecons_release(void)
+{
+      remove_proc_entry("driver/isecons", 0);
+      vfree(cons.log_buf);
+}
+
+void isecons_log(const char*fmt, ...)
+{
+      va_list args;
+      static char data_buf[1024];
+      char*data;
+      int ndata;
+
+      if (cons.log_buf == 0) {
+	    return;
+      }
+
+      va_start(args, fmt);
+      ndata = vsprintf(data_buf, fmt, args);
+      data = data_buf;
+      va_end(args);
+
+      if (ndata == 0) return;
+
+	/* If this message alone will overflow the buffer, take only
+	   the tail part that will fit. */
+
+      if (ndata > LOG_BUF_SIZE) {
+	    data += (ndata - LOG_BUF_SIZE);
+	    ndata = LOG_BUF_SIZE;
+      }
+
+	/* Remove enough from the front of the buffer that this
+	   message will fit. */
+
+      if ((cons.fill+ndata) > LOG_BUF_SIZE) {
+	    unsigned remove = (cons.fill+ndata) - LOG_BUF_SIZE;
+	    cons.ptr = (cons.ptr + remove) % LOG_BUF_SIZE;
+	    cons.fill -= remove;
+
+	    printk("isecons: log buffer overflow\n");
+      }
+
+      while (ndata > 0) {
+	    unsigned cur = (cons.ptr + cons.fill) % LOG_BUF_SIZE;
+	    unsigned tcount = ndata;
+
+	      /* Watch for wrapping... */
+	    if ((cur + tcount) > LOG_BUF_SIZE)
+		  tcount = LOG_BUF_SIZE - cur;
+
+	      /* Do the somewhat constrained write into the buffer. */
+	    memcpy(cons.log_buf+cur, data, tcount);
+	    cons.fill += tcount;
+	    data += tcount;
+	    ndata -= tcount;
+      }
+}
+
+static int isecons_read(char*page, char**start, off_t offset, int count,
+			int*eof, void*data)
+{
+      int trans;
+
+      if (cons.fill == 0) {
+	    *eof = 1;
+	    return 0;
+      }
+
+      trans = count;
+      if (cons.fill < trans) {
+	    trans = cons.fill;
+      }
+
+      if ((cons.ptr + trans) > LOG_BUF_SIZE) {
+	    trans = LOG_BUF_SIZE - cons.ptr;
+      }
+
+      memcpy(page, cons.log_buf + cons.ptr, trans);
+      cons.ptr += trans;
+      cons.fill -= trans;
+
+      *start = page;
+
+      if (cons.ptr == LOG_BUF_SIZE)
+	    cons.ptr = 0;
+      if (cons.fill == 0)
+	    *eof = 1;
+
+      return trans;
+}
+
+static int isecons_write(struct file*file, const char __user*buffer,
+			 unsigned long count, void*data)
+{
+      static char line_buffer[1024];
+      const char*beg = buffer;
+      const char*end;
+
+	/* Look in the string for the beginning of the next command. */
+      while (beg[0] != '<') {
+	    beg += 1;
+	    if ((beg-buffer) >= count)
+		  return count;
+      }
+
+	/* Look for the command terminator, the EOL. */
+      end = beg + 1;
+      while (end[0] != '\n') {
+	    end += 1;
+	    if ((end-buffer) >= count)
+		  break;
+      }
+
+      if (beg > buffer) {
+	    printk(KERN_INFO "isecons: skip %zd bytes of leading data.\n",
+		   beg - buffer);
+      }
+
+      if (end < (buffer + count - 1)) {
+	    printk(KERN_INFO "isecons: skip %lu bytes of trailing data.\n",
+		   count - (end-buffer));
+      }
+
+	/* Clip the line to the size of the line buffer, ... */
+      if ((end-beg) >= sizeof line_buffer)
+	    end = beg + sizeof line_buffer - 1;
+
+	/* ... and copy it in string form. */
+      memcpy(line_buffer, beg, end-beg);
+      line_buffer[end-beg] = 0;
+
+      if (strncmp(line_buffer, "<log>",5) == 0) {
+	    isecons_log("%s\n", line_buffer+5);
+	    return count;
+      }
+
+      if (strncmp(line_buffer, "<bell0>", 7) == 0) {
+	    unsigned long mask = simple_strtoul(line_buffer+7, 0, 0);
+	    struct Instance*xsp = ucr_find_board_instance(0);
+	    isecons_log("<bell0>0x%lx\n", mask);
+	    if (xsp) dev_set_bells(xsp, mask);
+	    return count;
+      }
+
+      return count;
+}
+
+
+/*
+ * $Log: isecons.c,v $
+ * Revision 1.6  2009/03/30 21:54:37  steve
+ *  Cimpatibility w/ 2.6.27 and 64bit kernels.
+ *
+ * Revision 1.5  2009/02/06 19:21:30  steve
+ *  Add read/write console for the ISE driver.
+ *
+ * Revision 1.4  2008/12/01 16:17:02  steve-icarus
+ *  More robust channel table handling.
+ *
+ * Revision 1.3  2008/08/25 22:27:31  steve
+ *  Better portability in the Linux universe.
+ *
+ * Revision 1.2  2004/03/26 20:35:21  steve
+ *  Add support for JSE device.
+ *
+ * Revision 1.1  2002/05/08 20:09:41  steve
+ *  Add the /proc/driver/isecons log file.
+ *
+ */
+

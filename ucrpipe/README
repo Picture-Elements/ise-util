@@ -1,0 +1,7 @@
+
+The ucrpipe command provides a way to communicate with BUS class
+channels on a target board. The program presumes a device driver of
+the form compatible with the ucrif.h interface file in the
+source/util/linux directory. It is necessary before conpiling this
+program to configure/compile/install the linux device drivers for the
+board you are working with.

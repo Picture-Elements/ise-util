@@ -1,0 +1,27 @@
+
+# This is the makefile for building prom_version with gcc instead of
+# The MS compiler. This is the preferred means, as this is how these
+# tools are to be supported in the future.
+#
+# This program requires that the libiseio library and header file be
+# installed ahead of time.
+#
+
+prefix=/cygdrive/c/Program\ Files/ISE
+libdir=$(prefix)
+incdir=$(prefix)
+bindir=$(prefix)
+
+CC = mingw32-gcc
+
+INC = -I$(incdir)
+LIB = -L$(libdir)
+CFLAGS = -O
+
+prom_version.exe: prom_version.c
+	$(CC) $(CFLAGS) -I.. -o prom_version.exe prom_version.c ../lib_winnt/libiseio.lib
+
+install: $(bindir)/prom_version.exe
+
+$(bindir)/prom_version.exe: prom_version.exe
+	install -D prom_version.exe $(bindir)/prom_version.exe

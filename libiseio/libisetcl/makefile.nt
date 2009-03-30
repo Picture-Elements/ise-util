@@ -1,0 +1,23 @@
+
+# --
+# This makefile only builds the .dll files.
+#
+
+NODEBUG=1
+!include <ntwin32.mak>
+
+all: libisetcl.dll
+
+OBJ = libisetcl.obj libisetcl.res
+
+libisetcl.dll: $(OBJ) libisetcl.def
+	link $(dlllflags) -out:$@ -def:libisetcl.def $(OBJ) tcl83.lib libiseio.lib $(libcdll) $(baselibs)
+
+libiseio.res: libisetcl.rc
+	rc /Folibisetcl.res libisetcl.rc
+
+clean:
+	del *.obj *.dll *.exp *.lib *.res
+
+libisetcl.obj: libisetcl.c ../libiseio.h
+	cl /c $(cvarsdll) -I.. -nologo -Folibisetcl.obj libisetcl.c
