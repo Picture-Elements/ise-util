@@ -22,17 +22,103 @@
 # include  "IsePanelMain.h"
 # include  <QCloseEvent>
 # include  <QMessageBox>
-# include  <sys/types.h>
-# include  <sys/stat.h>
-# include  <sys/ioctl.h>
-# include  <fcntl.h>
 # include  <ucrif.h>
+# include  <stdio.h>
+# include  <string.h>
 # include  <errno.h>
 # include  <assert.h>
 
 using namespace std;
 
-#define CONSOLE_PATH "/proc/driver/isecons"
+#if defined(_WIN32)
+const IsePanelMain::handle_t IsePanelMain::NO_DEV = INVALID_HANDLE_VALUE;
+
+IsePanelMain::handle_t IsePanelMain::open_dev_(unsigned dev_id)
+{
+      char path[32];
+      sprintf(path, "\\\\.\\ise%u", dev_id);
+      return CreateFileA(path, GENERIC_READ|GENERIC_WRITE, 0, 0,
+			 OPEN_EXISTING,
+			 FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED, 0);
+}
+
+IsePanelMain::handle_t IsePanelMain::open_con_(void)
+{
+      return CreateFileA("\\\\.\\isecons", GENERIC_READ, 0, 0,
+			 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+}
+
+size_t IsePanelMain::read_fd_(IsePanelMain::handle_t fd, char*buf, size_t len)
+{
+      DWORD cnt;
+      BOOL rc = ReadFile(fd, buf, len, &cnt, 0);
+      if (rc == 0)
+	    return 0;
+
+      return cnt;
+}
+
+int IsePanelMain::ioctl_fd_(IsePanelMain::handle_t fd, unsigned long cmd, int arg)
+{
+      OVERLAPPED over;
+      BOOL rc;
+      DWORD cnt;
+
+      over.hEvent = CreateEvent(0,TRUE,0,0);
+      over.Offset = 0;
+      over.OffsetHigh = 0;
+
+      rc = DeviceIoControl(fd, cmd, 0, 0, 0, 0, &cnt, &over);
+      rc = GetOverlappedResult(fd, &over, &cnt, TRUE);
+
+      CloseHandle(over.hEvent);
+
+      return 0;
+}
+
+void IsePanelMain::close_fd_(IsePanelMain::handle_t fd)
+{
+      CloseHandle(fd);
+}
+
+#else
+
+# include  <sys/types.h>
+# include  <sys/stat.h>
+# include  <sys/ioctl.h>
+# include  <fcntl.h>
+
+const IsePanelMain::handle_t IsePanelMain::NO_DEV = -1;
+
+IsePanelMain::handle_t IsePanelMain::open_dev_(unsigned dev_id)
+{
+      char path[64];
+      snprintf(path, sizeof path, "/dev/isex%u", idx);
+
+      return ::open(path, O_RDWR, 0);
+}
+
+IsePandlMain::handle_t IsePanelMain::open_con_(void)
+{
+      return ::open("/proc/driver/isecons", O_RDONLY, 0);
+}
+
+int IsePanelMain::read_fd_(IsePanelMain::handle_t fd, char*buf, size_t len)
+{
+      return ::read(fd, buf, sizeof buf-1);
+}
+
+int IsePanelMain::ioctl_fd_(IsePanelMain::handle_t fd, unsigned long cmd, int arg)
+{
+      return ::ioctl(fd, cmd, code);
+}
+
+void IsePanelMain::close_fd_(IsePanelMain::handle_t fd)
+{
+      ::close(fd);
+}
+
+#endif
 
 IsePanelMain::IsePanelMain(QWidget*parent)
 : QMainWindow(parent)
@@ -40,8 +126,8 @@ IsePanelMain::IsePanelMain(QWidget*parent)
       ui.setupUi(this);
 
       power_off_ = false;
-      ise_fdx_ = -1;
-      ise_cons_ = -1;
+      ise_fdx_ = NO_DEV;
+      ise_cons_ = NO_DEV;
       detect_ise_boards_();
 
       connect(ui.board_select,
@@ -89,16 +175,13 @@ void IsePanelMain::detect_ise_boards_(void)
       ui.board_select->clear();
 
       for (idx = 0 ;  idx < 16 ;  idx += 1) {
-	    char path[64];
-	    int fd;
-	    snprintf(path, sizeof path, "/dev/isex%u", idx);
-
-	    fd = ::open(path, O_RDWR, 0);
-	    if (fd < 0)
+	    handle_t fd = open_dev_(idx);
+	    if (fd == NO_DEV)
 		  break;
 
-	    ::close(fd);
+	    close_fd_(fd);
 
+	    char path[16];
 	    snprintf(path, sizeof path, "ise%u", idx);
 	    fprintf(stderr, "Detected %s\n", path);
 	    ui.board_select->addItem(path);
@@ -108,22 +191,20 @@ void IsePanelMain::detect_ise_boards_(void)
 void IsePanelMain::open_selected_isex_(void)
 {
       QString ise = ui.board_select->currentText();
-      char path[128];
-      int idx;
+      unsigned idx;
       int rc;
 
-      rc = sscanf(ise.toAscii(), "ise%d", &idx);
+      rc = sscanf(ise.toAscii(), "ise%u", &idx);
       assert(rc == 1);
 
-      sprintf(path, "/dev/isex%d", idx);
-      ise_fdx_ = ::open(path, O_RDWR, 0);
+      ise_fdx_ = open_dev_(idx);
 }
 
 void IsePanelMain::board_select_slot_(int)
 {
-      if (ise_fdx_ >= 0) {
-	    ::close(ise_fdx_);
-	    ise_fdx_ = -1;
+      if (ise_fdx_ != NO_DEV) {
+	    close_fd_(ise_fdx_);
+	    ise_fdx_ = NO_DEV;
       }
 }
 
@@ -132,18 +213,17 @@ void IsePanelMain::console_refresh_slot_(void)
       char buf[512];
       int rc;
 
-      if (ise_cons_ == -1) {
-	    ise_cons_ = ::open(CONSOLE_PATH, O_RDONLY, 0);
-	    if (ise_cons_ == -1) {
-		  fprintf(stderr, "Unable to open %s\n",
-			  CONSOLE_PATH);
+      if (ise_cons_ == NO_DEV) {
+	    ise_cons_ = open_con_();
+	    if (ise_cons_ == NO_DEV) {
+		  fprintf(stderr, "Unable to open console\n");
 		  return;
 	    }
       }
 
       QString text;
       do {
-	    rc = ::read(ise_cons_, buf, sizeof buf-1);
+	    rc = read_fd_(ise_cons_, buf, sizeof buf-1);
 	    if (rc <= 0)
 		  break;
 	    buf[rc] = 0;
@@ -156,7 +236,7 @@ void IsePanelMain::console_refresh_slot_(void)
 void IsePanelMain::diag0_slot_(void)
 {
       open_selected_isex_();
-      int rc = ioctl(ise_fdx_, UCRX_DIAGNOSE, 0);
+      int rc = ioctl_fd_(ise_fdx_, UCRX_DIAGNOSE, 0);
       if (rc < 0) {
 	    char buf[128];
 	    snprintf(buf, sizeof buf, "Error (%d) invoking diagnose-0", errno);
@@ -168,7 +248,7 @@ void IsePanelMain::diag0_slot_(void)
 void IsePanelMain::diag1_slot_(void)
 {
       open_selected_isex_();
-      int rc = ioctl(ise_fdx_, UCRX_DIAGNOSE, 1);
+      int rc = ioctl_fd_(ise_fdx_, UCRX_DIAGNOSE, 1);
       if (rc < 0) {
 	    char buf[128];
 	    snprintf(buf, sizeof buf, "Error (%d) invoking diagnose-1", errno);
@@ -181,14 +261,14 @@ void IsePanelMain::power_switch_slot_(int state)
 {
       if (state) {
 	    open_selected_isex_();
-	    int rc = ::ioctl(ise_fdx_, UCRX_REMOVE, 0);
+	    int rc = ioctl_fd_(ise_fdx_, UCRX_REMOVE, 0);
 	    if (rc < 0) {
 		  char buf[128];
 		  snprintf(buf, sizeof buf, "Error (%d) turning power off.", errno);
 		  QMessageBox::information(this, "Power Switch", buf);
 
-		  ::close(ise_fdx_);
-		  ise_fdx_ = -1;
+		  close_fd_(ise_fdx_);
+		  ise_fdx_ = NO_DEV;
 		  ui.power_switch->setCheckState(Qt::Unchecked);
 
 	    } else {
@@ -206,13 +286,13 @@ void IsePanelMain::power_switch_slot_(int state)
 	    if (power_off_) {
 		  power_off_ = false;
 		  assert(ise_fdx_ >= 0);
-		  int rc = ::ioctl(ise_fdx_, UCRX_REPLACE, 0);
+		  int rc = ioctl_fd_(ise_fdx_, UCRX_REPLACE, 0);
 		  assert(rc >= 0);
 	    }
 
 	    if (ise_fdx_ >= 0) {
-		  ::close(ise_fdx_);
-		  ise_fdx_ = -1;
+		  close_fd_(ise_fdx_);
+		  ise_fdx_ = NO_DEV;
 	    }
       }
 }

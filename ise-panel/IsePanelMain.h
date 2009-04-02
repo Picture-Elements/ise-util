@@ -24,6 +24,10 @@
 # include  <qapplication.h>
 # include  "ui_ise_panel.h"
 
+#if defined(_WIN32)
+# include  <windows.h>
+#endif
+
 class IsePanelMain  : public QMainWindow {
 
       Q_OBJECT
@@ -33,6 +37,18 @@ class IsePanelMain  : public QMainWindow {
       ~IsePanelMain();
 
     private:
+# if defined(_WIN32)
+      typedef ::HANDLE handle_t;
+#else
+      typedef int handle_t;
+#endif
+
+      static handle_t open_dev_(unsigned id);
+      static handle_t open_con_(void);
+      static size_t   read_fd_(handle_t fd, char*buf, size_t len);
+      static int      ioctl_fd_(handle_t fd, unsigned long cmd, int code);
+      static void     close_fd_(handle_t fd);
+
       void closeEvent(QCloseEvent*event);
       void detect_ise_boards_(void);
       void open_selected_isex_(void);
@@ -46,9 +62,11 @@ class IsePanelMain  : public QMainWindow {
 
     private:
       Ui::IsePanel ui;
+
+      static const handle_t NO_DEV;
       bool power_off_;
-      int ise_fdx_;
-      int ise_cons_;
+      handle_t ise_fdx_;
+      handle_t ise_cons_;
 };
 
 /*

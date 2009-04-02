@@ -1,0 +1,11 @@
+#
+# Generic ignore patterns.
+*.o
+*~
+# ise-panel/
+ise-panel/ise-panel
+ise-panel/Makefile*
+ise-panel/debug/*
+ise-panel/release/*
+ise-panel/moc_*.cpp
+ise-panel/ui_*.h
