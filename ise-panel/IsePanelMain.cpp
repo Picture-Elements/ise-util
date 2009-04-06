@@ -36,7 +36,7 @@ const IsePanelMain::handle_t IsePanelMain::NO_DEV = INVALID_HANDLE_VALUE;
 IsePanelMain::handle_t IsePanelMain::open_dev_(unsigned dev_id)
 {
       char path[32];
-      sprintf(path, "\\\\.\\ise%u", dev_id);
+      sprintf(path, "\\\\.\\isex%u", dev_id);
       return CreateFileA(path, GENERIC_READ|GENERIC_WRITE, 0, 0,
 			 OPEN_EXISTING,
 			 FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED, 0);
@@ -68,8 +68,9 @@ int IsePanelMain::ioctl_fd_(IsePanelMain::handle_t fd, unsigned long cmd, int ar
       over.Offset = 0;
       over.OffsetHigh = 0;
 
-      rc = DeviceIoControl(fd, cmd, 0, 0, 0, 0, &cnt, &over);
-      rc = GetOverlappedResult(fd, &over, &cnt, TRUE);
+      rc = DeviceIoControl(fd, cmd, &arg, sizeof arg, 0, 0, &cnt, &over);
+      if ((rc == 0) && (GetLastError() == ERROR_IO_PENDING))
+	    rc = GetOverlappedResult(fd, &over, &cnt, TRUE);
 
       CloseHandle(over.hEvent);
 
