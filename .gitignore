@@ -21,3 +21,10 @@ sys-linux2.4/.*.o.cmd
 sys-linux2.4/.*.ko.cmd
 sys-linux2.4/.tmp_versions/*
 sys-linux2.4/Module.*
+# video_scope/
+video_scope/Makefile*
+video_scope/debug/*
+video_scope/release/*
+video_scope/moc_*.cpp
+video_scope/ui_*.h
+video_scope/video_scope
