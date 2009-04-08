@@ -26,11 +26,30 @@
 using namespace std;
 
 VideoScopeMain::VideoScopeMain(QWidget*parent)
-: QMainWindow(parent)
+: QMainWindow(parent), device_(this)
 {
       ui.setupUi(this);
 
       detect_ise_boards_();
+      device_.start();
+
+      connect(ui.attach_check,
+	      SIGNAL(stateChanged(int)),
+	      SLOT(attach_check_slot_(int)));
+
+	// Connect my attach_board signal to the device_ attach_board
+	// slot. This is how I tell the thread to connect to a board.
+      connect(this, SIGNAL(attach_board(const QString&)),
+	      &device_, SLOT(attach_board(const QString&)));
+
+	// Connect the diagjse_version signal from the device thread
+	// directly to the scof_version_box widget.
+      connect(&device_, SIGNAL(diagjse_version(const QString&)),
+	      ui.scof_version_box, SLOT(setText(const QString&)));
+
+	// Receive video_width signals from the device thread.
+      connect(&device_, SIGNAL(video_width(unsigned)),
+	      SLOT(video_width_slot_(unsigned)));
 }
 
 VideoScopeMain::~VideoScopeMain()
@@ -49,4 +68,25 @@ void VideoScopeMain::detect_ise_boards_(void)
 	    QString tmp (path);
 	    ui.board_select->addItem(tmp);
       }
+}
+
+void VideoScopeMain::attach_check_slot_(int state)
+{
+      if (state) {
+	    QString tmp = ui.board_select->currentText();
+	    emit attach_board(tmp);
+      } else {
+	    QString tmp;
+	    emit attach_board(tmp);
+      }
+}
+
+void VideoScopeMain::video_width_slot_(unsigned wid)
+{
+      QString tmp ("N/A");
+      if (wid != 0) {
+	    tmp.setNum(wid);
+      }
+
+      ui.measured_width_box->setText(tmp);
 }

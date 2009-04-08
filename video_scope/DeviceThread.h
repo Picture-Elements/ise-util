@@ -1,5 +1,5 @@
-#ifndef __VideoScopeMain_H
-#define __VideoScopeMain_H
+#ifndef __DeviceThread_H
+#define __DeviceThread_H
 /*
  * Copyright (c) 2009 Picture Elements, Inc.
  *    Stephen Williams (steve@icarus.com)
@@ -9,7 +9,6 @@
  *    General Public License as published by the Free Software
  *    Foundation; either version 2 of the License, or (at your option)
  *    any later version.
- *
  *    This program is distributed in the hope that it will be useful,
  *    but WITHOUT ANY WARRANTY; without even the implied warranty of
  *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -20,31 +19,45 @@
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
 
-# include  <qapplication.h>
-# include  "ui_video_scope.h"
-# include  "DeviceThread.h"
+# include  <QThread>
+# include  <QString>
+# include  <QTimer>
+# include  <libiseio.h>
 
-class VideoScopeMain  : public QMainWindow {
+
+/*
+ * Use an instance of the DeviceThread to control a device. The thread
+ * receives commands (via its slots) and sends events out via signals.
+ */
+class DeviceThread  : public QThread {
 
       Q_OBJECT
 
     public:
-      VideoScopeMain(QWidget*parent =0);
-      ~VideoScopeMain();
+      DeviceThread(QObject*parent =0);
+      ~DeviceThread();
 
-    private:
-      void detect_ise_boards_(void);
-
-    private slots:
-      void attach_check_slot_(int state);
-      void video_width_slot_(unsigned wid);
+    public slots:
+	// Send the name of a board that the thread should attach. If
+	// the name is empty, then detach from any existing board.
+      void attach_board(const QString&name);
 
     signals:
-      void attach_board(const QString&);
+      void diagjse_version(const QString&text);
+      void video_width(unsigned wid);
+
+    private slots:
+      void clock_slot_(void);
 
     private:
-      Ui::VideoScope ui;
-      DeviceThread device_;
+      void run();
+
+    private:
+      struct ise_handle* dev_;
+      unsigned video_width_;
+      char buf_[4096];
+
+      QTimer clock_;
 };
 
 #endif
