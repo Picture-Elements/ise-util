@@ -28,6 +28,7 @@ DeviceThread::DeviceThread(QObject*parent)
 {
       dev_ = 0;
       video_width_ = 0;
+      live_flag_ = false;
       clock_.setSingleShot(false);
 }
 
@@ -52,8 +53,10 @@ void DeviceThread::attach_board(const QString&text)
 	    dev_ = 0;
       }
 
-      if (text.isEmpty())
+      if (text.isEmpty()) {
+	    emit diagjse_version(QString("no device"));
 	    return;
+      }
 
       dev_ = ise_open(text.toStdString().c_str());
       if (dev_ == 0) {
@@ -92,6 +95,40 @@ void DeviceThread::attach_board(const QString&text)
 	// Start a timer to query the geometry. It is enough to query
 	// every 200ms.
       clock_.start(200);
+}
+
+void DeviceThread::activate_live_mode_(bool flag)
+{
+      if (flag) {
+	    ise_writeln(dev_, 3, "set video-flag live");
+	    ise_readln(dev_, 3, buf_, sizeof buf_);
+	    clock_.start(300);
+      } else {
+	    ise_writeln(dev_, 3, "set video-flag page");
+	    ise_readln(dev_, 3, buf_, sizeof buf_);
+	    clock_.stop();
+      }
+}
+
+void DeviceThread::enable_live_mode(int state)
+{
+      bool flag = state != 0;
+      if (flag == live_flag_)
+	    return;
+
+      if (flag) {
+	    live_flag_ = true;
+	    if (video_width_ == 0)
+		  return;
+
+	    if (dev_)
+		  activate_live_mode_(true);
+
+      } else {
+	    live_flag_ = false;
+	    if (dev_)
+		  activate_live_mode_(false);
+      }
 }
 
 void DeviceThread::clock_slot_(void)
@@ -134,7 +171,20 @@ void DeviceThread::clock_slot_(void)
 
 	      // If we got the video width, then stop the clock.
 	    if (video_width_ != 0) {
-		  clock_.stop();
+		  activate_live_mode_(live_flag_);
+	    }
+      }
+
+      if (live_flag_) {
+	    ise_writeln(dev_, 3, "get readable");
+	    ise_readln(dev_, 3, buf_, sizeof buf_);
+
+	    QString line (buf_);
+	    if (line.toUInt() > 0) {
+		  ise_writeln(dev_, 3, "read 0");
+		  ise_readln(dev_, 3, buf_, sizeof buf_);
+
+		  printf("XXXX video: %s\n", buf_);
 	    }
       }
 }

@@ -42,6 +42,11 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
       connect(this, SIGNAL(attach_board(const QString&)),
 	      &device_, SLOT(attach_board(const QString&)));
 
+	// Connect the Live Mode check box directly to the live mode
+	// enable slot of the device.
+      connect(ui.live_mode_check, SIGNAL(stateChanged(int)),
+	      &device_, SLOT(enable_live_mode(int)));
+
 	// Connect the diagjse_version signal from the device thread
 	// directly to the scof_version_box widget.
       connect(&device_, SIGNAL(diagjse_version(const QString&)),

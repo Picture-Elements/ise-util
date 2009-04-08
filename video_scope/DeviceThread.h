@@ -22,6 +22,7 @@
 # include  <QThread>
 # include  <QString>
 # include  <QTimer>
+# include  <QImage>
 # include  <libiseio.h>
 
 
@@ -42,20 +43,31 @@ class DeviceThread  : public QThread {
 	// the name is empty, then detach from any existing board.
       void attach_board(const QString&name);
 
+	// command to enable/disable live mode.
+      void enable_live_mode(int state);
+
     signals:
+	// Signal the scof version string when the board is loaded.
       void diagjse_version(const QString&text);
+	// Signal the measured video width.
       void video_width(unsigned wid);
+	// Signal that a new live-display is ready.
+      void live_display(const QImage&chart);
 
     private slots:
       void clock_slot_(void);
 
     private:
       void run();
+      void activate_live_mode_(bool);
 
     private:
       struct ise_handle* dev_;
-      unsigned video_width_;
       char buf_[4096];
+
+	// Measured video width, or 0 if not measured yet.
+      unsigned video_width_;
+      bool live_flag_;
 
       QTimer clock_;
 };
