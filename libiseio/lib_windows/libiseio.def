@@ -1,0 +1,14 @@
+LIBRARY    libiseio.dll
+EXPORTS
+ise_error_msg
+ise_open
+ise_bind
+ise_prom_version
+ise_restart
+ise_channel
+ise_readln
+ise_timeout
+ise_writeln
+ise_close
+ise_make_frame
+ise_delete_frame
