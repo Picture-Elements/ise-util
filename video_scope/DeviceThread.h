@@ -24,7 +24,7 @@
 # include  <QTimer>
 # include  <QImage>
 # include  <libiseio.h>
-
+# include  <stddef.h>
 
 /*
  * Use an instance of the DeviceThread to control a device. The thread
@@ -63,7 +63,15 @@ class DeviceThread  : public QThread {
 
     private:
       struct ise_handle* dev_;
+      void*dev_frame_;
+      size_t dev_frame_size_;
+
       char buf_[4096];
+
+      QImage chart_;
+      unsigned long red_line_[64*1024];
+      unsigned long gre_line_[64*1024];
+      unsigned long blu_line_[64*1024];
 
 	// Measured video width, or 0 if not measured yet.
       unsigned video_width_;

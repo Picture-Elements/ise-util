@@ -19,6 +19,8 @@
  */
 
 # include  "VideoScopeMain.h"
+# include  <QGraphicsScene>
+# include  <QGraphicsPixmapItem>
 # include  <QString>
 # include  <libiseio.h>
 # include  <assert.h>
@@ -29,6 +31,11 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
 : QMainWindow(parent), device_(this)
 {
       ui.setupUi(this);
+
+      live_display_scene_ = new QGraphicsScene;
+      live_display_pixmap_ = new QGraphicsPixmapItem;
+      live_display_scene_->addItem(live_display_pixmap_);
+      ui.scope_view->setScene(live_display_scene_);
 
       detect_ise_boards_();
       device_.start();
@@ -55,6 +62,10 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
 	// Receive video_width signals from the device thread.
       connect(&device_, SIGNAL(video_width(unsigned)),
 	      SLOT(video_width_slot_(unsigned)));
+
+	// Receive a live_display chart image from the device.
+      connect(&device_, SIGNAL(live_display(const QImage&)),
+	      SLOT(live_display_slot_(const QImage&)));
 }
 
 VideoScopeMain::~VideoScopeMain()
@@ -94,4 +105,10 @@ void VideoScopeMain::video_width_slot_(unsigned wid)
       }
 
       ui.measured_width_box->setText(tmp);
+}
+
+void VideoScopeMain::live_display_slot_(const QImage&chart)
+{
+      live_display_pixmap_->setPixmap(QPixmap::fromImage(chart));
+      live_display_scene_->update();
 }

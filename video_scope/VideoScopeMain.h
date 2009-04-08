@@ -24,6 +24,9 @@
 # include  "ui_video_scope.h"
 # include  "DeviceThread.h"
 
+class QGraphicsScene;
+class QGraphicsPixmapItem;
+
 class VideoScopeMain  : public QMainWindow {
 
       Q_OBJECT
@@ -38,12 +41,15 @@ class VideoScopeMain  : public QMainWindow {
     private slots:
       void attach_check_slot_(int state);
       void video_width_slot_(unsigned wid);
+      void live_display_slot_(const QImage&chart);
 
     signals:
       void attach_board(const QString&);
 
     private:
       Ui::VideoScope ui;
+      QGraphicsScene*live_display_scene_;
+      QGraphicsPixmapItem*live_display_pixmap_;
       DeviceThread device_;
 };
 
