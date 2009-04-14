@@ -198,6 +198,9 @@ void DeviceThread::clock_slot_(void)
 			blu_line_[idx] = 0;
 		  }
 
+		  if (wid * hei * dep > dev_frame_size_)
+			hei = dev_frame_size_ / (wid * dep);
+
 		  int roff = 0;
 		  int goff = dep>1? 1 : 0;
 		  int boff = dep>1? 2 : 0;
