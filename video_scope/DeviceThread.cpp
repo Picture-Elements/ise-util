@@ -56,18 +56,21 @@ void DeviceThread::attach_board(const QString&text)
 
       if (text.isEmpty()) {
 	    emit diagjse_version(QString("no device"));
+	    emit video_width(0);
 	    return;
       }
 
       dev_ = ise_open(text.toStdString().c_str());
       if (dev_ == 0) {
 	    emit diagjse_version(QString("no device"));
+	    emit video_width(0);
 	    return;
       }
 
       ise_rc = ise_restart(dev_, "diagjse");
       if (ise_rc != ISE_OK) {
 	    emit diagjse_version(QString("no diagjse"));
+	    emit video_width(0);
 	    ise_close(dev_);
 	    dev_ = 0;
 	    return;
