@@ -14,6 +14,11 @@ libiseio/lib_linux/libiseio.so
 libiseio/lib_linux/config.log
 libiseio/lib_linux/config.status
 # sys-linux2.4/
+sys-linux2.4/Makefile
+sys-linux2.4/configure
+sys-linux2.4/config.cache
+sys-linux2.4/config.log
+sys-linux2.4/config.status
 sys-linux2.4/ise.ko
 sys-linux2.4/ise.mod.c
 sys-linux2.4/modules.order
