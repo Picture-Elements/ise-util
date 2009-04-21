@@ -21,6 +21,8 @@
 
 # include  "os.h"
 # include  "ucrpriv.h"
+# include  <linux/pci.h>
+# include  <linux/pci_regs.h>
 
 /*
  * The JSE uses an Intel 21555 bridge to provide the interface. In
@@ -44,6 +46,10 @@
 
 void ejse_init_hardware(struct Instance*xsp)
 {
+      struct pci_dev*bridge_dev;
+      u8 tmp8;
+      int rc;
+
       dev_iowrite32(0, xsp->dev+0xf0000);
       dev_iowrite32(0, xsp->dev+0xf0004);
       dev_iowrite32(0, xsp->dev+0xf0008);
@@ -51,6 +57,15 @@ void ejse_init_hardware(struct Instance*xsp)
       dev_iowrite32(0x0000ff00, xsp->dev+0x1000c);
 	/* Globally enable interrupts */
       dev_iowrite32(1, xsp->dev+0x0000c);
+
+	/* For diagnostic purposes, we like to fiddle with some of the
+	   bridge configuration for the device. The bridge of an EJSE
+	   is the bridge chip enbedded on the board itself. */
+      bridge_dev = xsp->pci->bus->self;
+
+      rc = pci_read_config_byte(bridge_dev, PCI_BRIDGE_CONTROL, &tmp8);
+      tmp8 |= PCI_BRIDGE_CTL_PARITY;
+      pci_write_config_byte(bridge_dev, PCI_BRIDGE_CONTROL, tmp8);
 }
 
 void ejse_clear_hardware(struct Instance*xsp)
