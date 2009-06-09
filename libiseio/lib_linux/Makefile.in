@@ -1,8 +1,6 @@
 # --
-# Copyright (c) 2000 Picture Elements, Inc.
+# Copyright (c) 2000-2009 Picture Elements, Inc.
 # Stephen Williams (steve@picturel.com)
-#
-# $Id: Makefile.in,v 1.2 2004/12/31 00:24:41 steve Exp $
 #
 #    This source code is free software; you can redistribute it
 #    and/or modify it in source code form under the terms of the GNU
@@ -46,12 +44,12 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
 CPPFLAGS = @CPPFLAGS@ @DEFS@ -I../ -I$(includedir)
-CFLAGS = -O
+CFLAGS = -O -fPIC
 LDFLAGS = @LDFLAGS@
 
 all: libiseio.so
 
-O = libiseio.o
+O = libiseio.o ise.o
 
 libiseio.so: $O
 	cc -shared -o libiseio.so $O
@@ -77,4 +75,5 @@ clean:
 distclean: clean
 	rm -f Makefile config.cache config.status config.log
 
-libiseio.o: libiseio.c ../libiseio.h
+libiseio.o: libiseio.c priv.h ../libiseio.h
+ise.o: ise.c priv.h ../libiseio.h

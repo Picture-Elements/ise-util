@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2002 Picture Elements, Inc.
+ * Copyright (c) 2000-2009 Picture Elements, Inc.
  *    Stephen Williams (steve@picturel.com)
  *
  *    This source code is free software; you can redistribute it
@@ -25,45 +25,24 @@
  *    binary (compiled) form. If you have not received it, contact
  *    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
  */
-#ident "$Id: libiseio.c,v 1.14 2007/02/15 20:12:49 steve Exp $"
 
 # include  <libiseio.h>
-# include  <ucrif.h>
+# include  "priv.h"
+
 # include  <stdlib.h>
 # include  <unistd.h>
 # include  <stdio.h>
 # include  <string.h>
 # include  <errno.h>
-# include  <sys/mman.h>
-# include  <sys/types.h>
 # include  <fcntl.h>
+
 # include  <assert.h>
 
 #ifndef FIRM_ROOT
 # define FIRM_ROOT "/usr/share/ise"
 #endif
 
-static FILE*lib_logfile = 0;
-
-struct ise_channel {
-      struct ise_channel*next;
-      unsigned cid;
-      int fd;
-      char buf[1024];
-      unsigned ptr, fill;
-};
-
-struct ise_handle {
-      unsigned id;
-      int isex;
-      char*version;
-      struct ise_channel*clist;
-
-      struct {
-	    void*base;
-	    size_t size;
-      } frame[16];
-};
+FILE*__ise_logfile = 0;
 
 const char*ise_error_msg(ise_error_t code)
 {
@@ -91,150 +70,111 @@ const char*ise_prom_version(struct ise_handle*dev)
 
 ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 {
-      unsigned wait_count;
       char path[1024];
-      int ch0, fd, rc;
+      int fd, rc;
+      ise_error_t rc_ise;
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: **** ise_restart(...,%s)\n",
+      struct ise_channel ch0;
+
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: **** ise_restart(...,%s)\n",
 		    dev->id, firm);
 
-      ioctl(dev->isex, UCRX_RESTART_BOARD, 0);
-
+      dev->fun->restart(dev);
+      
 	/* Open channel 0 to the firmware. This will be where I shove
 	   the firmware. */
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: open channel 0\n", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: open channel 0\n", dev->id);
 
-      sprintf(path, "/dev/ise%u", dev->id);
-      ch0 = open(path, O_RDWR, 0);
-      rc = ioctl(ch0, UCR_CHANNEL, 0);
+      ch0.next = 0;
+      ch0.cid  = 0;
+      ch0.fd   = -1;
+      ch0.ptr  = 0;
+      ch0.fill = 0;
+      rc_ise = dev->fun->channel_open(dev, &ch0);
+      if (rc_ise != ISE_OK)
+	    return rc_ise;
 
 	/* Try to find the scof file. Look in the current working
 	   directory and the compiled in library directory. */
 
       sprintf(path, "./%s.scof", firm);
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: try firmware %s\n",
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: try firmware %s\n",
 		    dev->id, path);
 
       fd = open(path, O_RDONLY, 0);
       if (fd < 0) {
 	    sprintf(path, FIRM_ROOT "/%s.scof", firm);
 
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: try firmware %s\n",
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: try firmware %s\n",
 			  dev->id, path);
 
 	    fd = open(path, O_RDONLY, 0);
       }
 
       if (fd < 0) {
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: **** No firmware, "
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: **** No firmware, "
 			  "giving up.\n", dev->id, path);
 
-	    close(ch0);
+	    dev->fun->channel_close(dev, &ch0, 0);
 	    return ISE_NO_SCOF;
       }
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: transmitting firmware\n", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: transmitting firmware\n", dev->id);
 
 	/* In a loop, read bytes of the SCOF file and write them into
 	   channel 0. This causes the flash to load the firmware into
 	   DRAM at the correct places. */
       rc = read(fd, path, sizeof path);
       while (rc > 0) {
-	    write(ch0, path, rc);
+	    dev->fun->write(dev, &ch0, path, rc);
 	    rc = read(fd, path, sizeof path);
       }
 
       close(fd);
 
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u: sync channel 0...\n", dev->id);
-	    fflush(lib_logfile);
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "ise%u: sync channel 0...\n", dev->id);
+	    fflush(__ise_logfile);
       }
 
 	/* Flush the data in the channel, and close the channel. We
 	   are done writing the program into the board. The SYNC is
 	   needed to make sure all the bytes are on the target board
 	   before the channel buffers are removed by the close. */
-      rc = ioctl(ch0, UCR_SYNC, 0);
-      close(ch0);
+      dev->fun->channel_close(dev, &ch0, 1);
 
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u: running program\n", dev->id);
-	    fflush(lib_logfile);
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "ise%u: running program\n", dev->id);
+	    fflush(__ise_logfile);
       }
 
-      wait_count = 100;
-      do {
-	      /* Run! Run! */
-	    rc = ioctl(dev->isex, UCRX_RUN_PROGRAM, 0);
-
-	    if (rc >= 0) break;
-
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u: run failed, errno=%d"
-			  " (wait_count=%u)\n", dev->id, errno, wait_count);
-		  fflush(lib_logfile);
-	    }
-
-	    usleep(20000);
-	    wait_count -= 1;
-      } while (wait_count > 0);
-
-      if (rc >= 0) {
-
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u: **** ise_restart complete\n",
-			  dev->id);
-		  fflush(lib_logfile);
-	    }
-
-	    return ISE_OK;
-
-      } else {
-
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u: **** ise_restart failed"
-			  " errno=%d\n", dev->id, errno);
-		  fflush(lib_logfile);
-	    }
-
-	    return ISE_ERROR;
-      }
+      return dev->fun->run_program(dev);
 }
 
 ise_error_t ise_channel(struct ise_handle*dev, unsigned cid)
 {
       struct ise_channel*chn;
-      int fd;
-      int rc;
-
-      { char path[32];
-        sprintf(path, "/dev/ise%u", dev->id);
-	fd = open(path, O_RDWR, 0);
-      }
-
-      if (fd < 0) {
-	    return ISE_ERROR;
-      }
-
-      rc = ioctl(fd, UCR_CHANNEL, cid);
-      if (rc < 0) {
-	    close(fd);
-	    return ISE_CHANNEL_BUSY;
-      }
+      ise_error_t rc;
 
       chn = calloc(1, sizeof (struct ise_channel));
       chn->cid = cid;
-      chn->fd  = fd;
+      chn->fd  = -1;
       chn->ptr = 0;
       chn->fill = 0;
+
+      rc = dev->fun->channel_open(dev, chn);
+      if (rc != ISE_OK) {
+	    free(chn);
+	    return rc;
+      }
+
       chn->next = dev->clist;
       dev->clist = chn;
 
@@ -243,45 +183,30 @@ ise_error_t ise_channel(struct ise_handle*dev, unsigned cid)
 
 void* ise_make_frame(struct ise_handle*dev, unsigned id, size_t*siz)
 {
-      long rc;
-      unsigned long arg = (id << 28) | (*siz & 0x0fffffffUL);
+      ise_error_t rc;
 
       if (dev->frame[id].base) {
 	    *siz = dev->frame[id].size;
 	    return dev->frame[id].base;
       }
 
-      if (dev->clist == 0)
+      dev->frame[id].size = *siz;
+      rc = dev->fun->make_frame(dev, id);
+      if (rc != ISE_OK)
 	    return 0;
 
-      rc = ioctl(dev->clist->fd, UCR_MAKE_FRAME, arg);
-      if (rc < 0)
-	    return 0;
-
-      dev->frame[id].size = rc;
-      dev->frame[id].base = mmap(0, *siz, PROT_READ|PROT_WRITE,
-				 MAP_SHARED, dev->clist->fd, (id << 28));
-
+      *siz = dev->frame[id].size;
       return dev->frame[id].base;
 }
 
 void ise_delete_frame(struct ise_handle*dev, unsigned id)
 {
-      int rc;
-      unsigned long arg = (id << 28) | (dev->frame[id].size & 0x0fffffffUL);
-
       assert(dev);
 
       if (dev->frame[id].base == 0)
 	    return;
 
-      munmap(dev->frame[id].base, dev->frame[id].size);
-      dev->frame[id].base = 0;
-
-      assert(dev->clist);   
-      rc = ioctl(dev->clist->fd, UCR_FREE_FRAME, arg);
-      if (rc < 0)
-	    fprintf(stderr, "UCR_FREE_FRAME error %d\n", errno);
+      dev->fun->delete_frame(dev, id);
 }
 
 ise_error_t ise_writeln(struct ise_handle*dev, unsigned cid,
@@ -296,39 +221,20 @@ ise_error_t ise_writeln(struct ise_handle*dev, unsigned cid,
       if (chn == 0)
 	    return ISE_NO_CHANNEL;
 
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u.%u: writeln(%s)\n",
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "ise%u.%u: writeln(%s)\n",
 		    dev->id, chn->cid, text);
-	    fflush(lib_logfile);
+	    fflush(__ise_logfile);
       }
 
-      rc = write(chn->fd, text, strlen(text));
-      { char nl = '\n';
-        rc = write(chn->fd, &nl, 1);
-      }
-
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u.%u: writeln FLUSH\n",
-		    dev->id, chn->cid);
-	    fflush(lib_logfile);
-      }
-
-      rc = ioctl(chn->fd, UCR_FLUSH, 0);
-
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u.%u: writeln done\n",
-		    dev->id, chn->cid);
-	    fflush(lib_logfile);
-      }
-
-      return ISE_OK;
+      return dev->fun->writeln(dev, chn, text);
 }
 
 ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 		       char*buf, size_t nbuf)
 {
       struct ise_channel*chn = dev->clist;
-      int rc;
+      ise_error_t rc;
       char*bp;
 
       while (chn && (chn->cid != cid))
@@ -337,10 +243,10 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
       if (chn == 0)
 	    return ISE_NO_CHANNEL;
 
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u.%u: readln...\n",
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "ise%u.%u: readln...\n",
 		    dev->id, chn->cid, buf);
-	    fflush(lib_logfile);
+	    fflush(__ise_logfile);
       }
 
       bp = buf;
@@ -352,10 +258,10 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 		  if (*bp == '\n') {
 			*bp = 0;
 
-			if (lib_logfile) {
-			      fprintf(lib_logfile, "ise%u.%u: readln -->%s\n",
+			if (__ise_logfile) {
+			      fprintf(__ise_logfile, "ise%u.%u: readln -->%s\n",
 				      dev->id, chn->cid, buf);
-			      fflush(lib_logfile);
+			      fflush(__ise_logfile);
 			}
 
 			return ISE_OK;
@@ -363,40 +269,32 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 		  bp += 1;
 	    }
 
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u.%u: read more data...\n",
+	    if (__ise_logfile) {
+		  fprintf(__ise_logfile, "ise%u.%u: read more data...\n",
 			  dev->id, chn->cid);
-		  fflush(lib_logfile);
+		  fflush(__ise_logfile);
 	    }
 
-	    rc = read(chn->fd, chn->buf, sizeof chn->buf);
+	    rc = dev->fun->readbuf(dev, chn);
 
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u.%u: read returned (%d)...\n",
-			  dev->id, chn->cid, rc);
-		  fflush(lib_logfile);
-	    }
-
-	    if (rc <= 0) {
+	    if (rc != ISE_OK) {
 		  *bp = 0;
-		  if (lib_logfile) {
-			fprintf(lib_logfile, "ise%u.%u: readln read error\n",
+		  if (__ise_logfile) {
+			fprintf(__ise_logfile, "ise%u.%u: readln read error\n",
 				dev->id, chn->cid);
-			fflush(lib_logfile);
+			fflush(__ise_logfile);
 		  }
 
-		  return ISE_ERROR;
+		  return rc;
 	    }
 
-	    chn->ptr = 0;
-	    chn->fill = rc;
 
       } while (bp < (buf+nbuf));
 
-      if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u.%u: readln buffer overrun\n",
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "ise%u.%u: readln buffer overrun\n",
 		    dev->id, chn->cid, buf);
-	    fflush(lib_logfile);
+	    fflush(__ise_logfile);
       }
 
       return ISE_ERROR;
@@ -405,16 +303,7 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 ise_error_t ise_timeout(struct ise_handle*dev, unsigned cid,
 			long read_timeout)
 {
-      int rc;
-      struct ucrx_timeout_s ts;
-
-      ts.id = cid;
-      ts.read_timeout = read_timeout;
-      rc = ioctl(dev->isex, UCRX_TIMEOUT, &ts);
-      if (rc < 0)
-	    return ISE_ERROR;
-
-      return ISE_OK;
+      return dev->fun->timeout(dev, cid, read_timeout);
 }
 
 struct ise_handle*ise_bind(const char*name)
@@ -423,7 +312,7 @@ struct ise_handle*ise_bind(const char*name)
       unsigned id = 0;
       char*logpath;
 
-      if ((lib_logfile == 0) && ((logpath = getenv("LIBISEIO_LOG")))) {
+      if ((__ise_logfile == 0) && ((logpath = getenv("LIBISEIO_LOG")))) {
 	    char*cp = strchr(logpath, '=');
 	    if (cp)
 		  cp += 1;
@@ -431,18 +320,18 @@ struct ise_handle*ise_bind(const char*name)
 		  cp = logpath;
 
 	    if (strcmp(logpath,"-") == 0) {
-		  lib_logfile = stdout;
+		  __ise_logfile = stdout;
 
 	    } else if (strcmp(logpath,"--") == 0) {
-		  lib_logfile = stderr;
+		  __ise_logfile = stderr;
 
 	    } else {
-		  lib_logfile = fopen(logpath, "a");
+		  __ise_logfile = fopen(logpath, "a");
 	    }
       }
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise: **** ise_bind(%s)\n", name);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise: **** ise_bind(%s)\n", name);
 
       if (name[0] != 'i') return 0;
       if (name[1] != 's') return 0;
@@ -464,27 +353,28 @@ struct ise_handle*ise_bind(const char*name)
       dev->isex = -1;
       dev->clist = 0;
 
+      dev->fun = &__driver_ise;
+
       return dev;
 }
 
 struct ise_handle*ise_open(const char*name)
 {
       struct ise_handle*dev;
-      char*buf = 0;
-      size_t nbuf = 0;
-      int mon;
       char*logpath;
+      ise_error_t rc;
+      struct ise_channel mon;
 
       dev = ise_bind(name);
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise: **** ise_open(%s)\n", name);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise: **** ise_open(%s)\n", name);
 
       { char pathx[16];
         sprintf(pathx, "/dev/isex%u", dev->id);
 
-	if (lib_logfile)
-	      fprintf(lib_logfile, "ise%u: Opening control device %s\n",
+	if (__ise_logfile)
+	      fprintf(__ise_logfile, "ise%u: Opening control device %s\n",
 		      dev->id, pathx);
 
 	dev->isex = open(pathx, O_RDWR, 0);
@@ -493,62 +383,70 @@ struct ise_handle*ise_open(const char*name)
       if (dev->isex < 0) {
 	    free(dev);
 
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: Control file failed.\n", dev->id);
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: Control file failed.\n", dev->id);
 
 	    return 0;
       }
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: Restart device\n", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: Restart device\n", dev->id);
 
-      ioctl(dev->isex, UCRX_RESTART_BOARD, 0);
+      dev->fun->restart(dev);
 
-      { char path[16];
-        sprintf(path, "/dev/ise%u", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: Open ise%u monitor port\n", dev->id);
 
-	if (lib_logfile)
-	      fprintf(lib_logfile, "ise%u: Open device %s\n", dev->id, path);
+      mon.fd = -1;
+      mon.cid = 254;
+      mon.ptr = 0;
+      mon.fill = 0;
+      rc = dev->fun->channel_open(dev, &mon);
 
-	mon = open(path, O_RDWR, 0);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: reading ident data\n", dev->id);
 
-	if (lib_logfile)
-	      fprintf(lib_logfile, "ise%u: switch to channel 254\n", dev->id);
+      dev->fun->writeln(dev, &mon, "");
 
-	ioctl(mon, UCR_CHANNEL, 254);
-      }
+      dev->fun->readbuf(dev, &mon);
+      for (;;) {
+	    char ch = mon.buf[mon.ptr];
+	    mon.ptr += 1;
+	    mon.fill -= 1;
+	    if (ch == '>')
+		  break;
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: reading ident data\n", dev->id);
-
-      write(mon, "\n", 1);
-      ioctl(mon, UCR_FLUSH, 0);
-
-      buf = malloc(4096);
-      nbuf = 4096;
-
-      buf[0] = 0;
-      while (buf[0] != '>') {
-	    read(mon, buf, 1);
+	    if (mon.fill == 0)
+		  dev->fun->readbuf(dev, &mon);
       }
 
 	/* Send the [i]dent command to the prom monitor. */
-      write(mon, "i\n", 2);
-      ioctl(mon, UCR_FLUSH, 0);
+      dev->fun->writeln(dev, &mon, "i");
 
 	/* Read back the ident string. Read the whole thing, up to the
 	   final prompt (>) character. Make sure the allocate more
 	   buffer as needed. */
-      { char*cp = buf;
+      dev->version = malloc(256);
+      { char*cp = dev->version;
+	size_t nbuf = 256;
         for (;;) {
-	      if ((cp-buf) == nbuf) {
-		    long dif = cp - buf;
-		    buf = realloc(buf, nbuf+1024);
-		    cp = buf + dif;
-		    nbuf += 1024;
+	      if ((cp-dev->version) == nbuf) {
+		    long dif = cp - dev->version;
+		    dev->version = realloc(dev->version, nbuf+256);
+		    cp = dev->version + dif;
+		    nbuf += 256;
 	      }
 
-	      read(mon, cp, 1);
+	      if (mon.fill == 0)
+		    dev->fun->readbuf(dev, &mon);
+	      if (mon.fill == 0) {
+		    cp[0] = 0;
+		    break;
+	      }
+
+	      cp[0] = mon.buf[mon.ptr];
+	      mon.ptr += 1;
+	      mon.fill -= 1;
 	      if (cp[0] == '>') {
 		    cp[0] = 0;
 		    break;
@@ -560,20 +458,20 @@ struct ise_handle*ise_open(const char*name)
 	  /* All done reading the version information. Trim the
 	     allocated space back down to the exact size, and stash the
 	     data away as the version string. */
-	buf = realloc(buf, (cp-buf) + 1);
-	dev->version = buf;
+	dev->version = realloc(dev->version, (cp- dev->version) + 1);
       }
-
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: Restart device\n", dev->id);
 
 	/* All done with this setup. Close the monitor channel and
 	   reset the ISE board. */
-      close(mon);
-      ioctl(dev->isex, UCRX_RESTART_BOARD, 0);
+      dev->fun->channel_close(dev, &mon, 0);
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: ise_open(%s) complete.\n",
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: Restart device\n", dev->id);
+
+      dev->fun->restart(dev);
+
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: ise_open(%s) complete.\n",
 		    dev->id, name);
 
       return dev;
@@ -583,15 +481,15 @@ void ise_close(struct ise_handle*dev)
 {
       unsigned idx;
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: **** ise_close\n", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: **** ise_close\n", dev->id);
 
       for (idx = 0 ;  idx < 16 ;  idx += 1) {
 	    if (dev->frame[idx].base == 0)
 		  continue;
 
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: delete frame %u\n",
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: delete frame %u\n",
 			  dev->id, idx);
 
 	    ise_delete_frame(dev, idx);
@@ -601,84 +499,34 @@ void ise_close(struct ise_handle*dev)
 	    struct ise_channel*chn = dev->clist;
 	    dev->clist = chn->next;
 
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: Close channel %u\n",
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: Close channel %u\n",
 			  dev->id, chn->cid);
 
-	    close(chn->fd);
+	    dev->fun->channel_close(dev, chn, 0);
 	    free(chn);
       }
 
       if (dev->version) {
-	    if (lib_logfile)
-		  fprintf(lib_logfile, "ise%u: Reset board.\n", dev->id);
+	    if (__ise_logfile)
+		  fprintf(__ise_logfile, "ise%u: Reset board.\n", dev->id);
 
-	    if (dev->isex >= 0) {
-		  ioctl(dev->isex, UCRX_RESTART_BOARD, 0);
-		  close(dev->isex);
-	    }
+	    dev->fun->restart(dev);
 
 	    free(dev->version);
 
       } else {
 	      /* If the board was opened by ise_bind, then skip the
 		 reset. */
-	    if (lib_logfile) {
-		  fprintf(lib_logfile, "ise%u: Opened by ise_bind, "
+	    if (__ise_logfile) {
+		  fprintf(__ise_logfile, "ise%u: Opened by ise_bind, "
 			  "so skipping reset.\n", dev->id);
-		  fflush(lib_logfile);
+		  fflush(__ise_logfile);
 	    }
       }
 
-      if (lib_logfile)
-	    fprintf(lib_logfile, "ise%u: **** ise_close complete\n", dev->id);
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: **** ise_close complete\n", dev->id);
 
       free(dev);
 }
-
-/*
- * $Log: libiseio.c,v $
- * Revision 1.14  2007/02/15 20:12:49  steve
- *  Skip restart if using ise_bind.
- *
- * Revision 1.13  2005/08/09 22:48:01  steve
- *  Fix access of the wrong device in ise_restart.
- *
- * Revision 1.12  2005/08/09 00:10:25  steve
- *  Add the ise_bind function.
- *
- * Revision 1.11  2004/04/02 03:30:46  steve
- *  Do not use UCRX_RESET, it is not needed.
- *
- * Revision 1.10  2003/04/25 22:38:40  steve
- *  Add more logs.
- *
- * Revision 1.9  2002/11/15 19:30:12  steve
- *  Account for buffer move after realloc.
- *
- * Revision 1.8  2002/06/13 00:44:34  steve
- *  Delete frames on device close.
- *
- * Revision 1.7  2002/04/11 22:00:40  steve
- *  Retry in run to close race opening.
- *
- * Revision 1.6  2002/03/26 22:07:56  steve
- *  Support a library log dump file.
- *
- * Revision 1.5  2001/07/16 19:59:36  steve
- *  Make timeout features of driver available to API.
- *
- * Revision 1.4  2001/03/27 22:21:51  steve
- *  Add the ise_make_frame function.
- *
- * Revision 1.3  2000/07/24 20:38:47  steve
- *  Fix scanning for scof files.
- *
- * Revision 1.2  2000/06/29 22:46:54  steve
- *  Close dangling fd.
- *
- * Revision 1.1  2000/06/27 22:51:22  steve
- *  Add libiseio for Linux.
- *
- */
-
