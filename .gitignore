@@ -11,8 +11,10 @@ ise-panel/moc_*.cpp
 ise-panel/ui_*.h
 # libiseio/
 libiseio/lib_linux/libiseio.so
+libiseio/lib_linux/configure
 libiseio/lib_linux/config.log
 libiseio/lib_linux/config.status
+libiseio/lib_linux/Makefile
 # sys-linux2.4/
 sys-linux2.4/Makefile
 sys-linux2.4/configure

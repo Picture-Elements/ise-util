@@ -1,0 +1,39 @@
+
+Drivers, API and sample programs for ISE/SSE/JSE boards.
+
+This directory contains driver and API software for Picture Elements
+ISE/SSE/JSE boards. You can build/install as much of this software as
+you need, so long as you do it in the proper order.
+
+* The driver
+
+First, install the driver. The kernel mode driver is in the directory
+"sys-linux2.4". In spite of the name, this driver supports Linux 2.6
+kernels. The driver module itself is stand-alone, but the driver
+interface header file <ucrif.h> is necessary for building the API, so
+you at least need to install that.
+
+NOTE: The Windows driver for ISE/SSE/JSE is not distributed in source
+form. If you need the Windows driver (i.e. it did not come with your
+boards) get it from Picture Elements.
+
+* The API
+
+The "libiseio" directory contains the source for the API. The API
+definition, in libiseio.h, supports Windows and Linux, and the source
+is divided into the Windows version and the Linux version. See the
+appropriate directory for building and installing the API on your
+system.
+
+* Utility/Sample programs.
+
+After the driver is installed and the API build and installed, you can
+build the sample and utility programs. See the instructions in the
+ucrpipe/ directory and the ise-getenv/ directory.
+
+* video_scope
+
+The video_scope is a QT based application that demonstrates the use of
+the live mode of diagjse.scof on JSE style boards. To build this, you
+need the API installed, and you need QT installed on your system. See
+the video_scope/ directory for details.

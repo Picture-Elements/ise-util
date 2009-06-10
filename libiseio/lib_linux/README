@@ -1,0 +1,35 @@
+
+LIBISEIO FOR LINUX
+
+This directory contains the source for the libiseio library for
+Linux. To build and install you will need only gcc installed and
+enough shell utilities to run the configure script. If you received
+this code via git, you will also need the "autoconf" package.
+
+You also will need to install the ucrif.h header file from the linux
+device driver install. You don't necesarily need to build in install
+the entire device driver, as long as you install the ucrif.h header
+file in the right place.
+
+* Step 0:
+
+If you need to generate the "configure" script, execute:
+
+   autoconf
+
+* Configure and Compile.
+
+Compilation is simple, and is done in the usual "GNU" way:
+
+   ./configure --prefix=/usr
+   make
+
+* Install
+
+Let "make" do it for you:
+
+   make install
+
+This will install the libiseio.so shared object and the libiseio.h
+header file. Now you are ready to develop applications that use
+ISE/SSE/JSE boards.
