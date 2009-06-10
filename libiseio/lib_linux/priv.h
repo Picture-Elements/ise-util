@@ -57,6 +57,10 @@ struct ise_handle {
 extern FILE*__ise_logfile;
 
 struct ise_driver_functions {
+
+	/* Connect to the control channel for the bound board. */
+      ise_error_t (*connect)(struct ise_handle*dev);
+
 	/* Restart the board, or put it in a state where it is able to
 	   receive firmware and related commands. */
       ise_error_t (*restart)(struct ise_handle*dev);

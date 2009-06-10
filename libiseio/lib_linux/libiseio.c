@@ -370,22 +370,13 @@ struct ise_handle*ise_open(const char*name)
       if (__ise_logfile)
 	    fprintf(__ise_logfile, "ise: **** ise_open(%s)\n", name);
 
-      { char pathx[16];
-        sprintf(pathx, "/dev/isex%u", dev->id);
-
-	if (__ise_logfile)
-	      fprintf(__ise_logfile, "ise%u: Opening control device %s\n",
-		      dev->id, pathx);
-
-	dev->isex = open(pathx, O_RDWR, 0);
-      }
-
-      if (dev->isex < 0) {
-	    free(dev);
+      rc = dev->fun->connect(dev);
+      if (rc != ISE_OK) {
 
 	    if (__ise_logfile)
 		  fprintf(__ise_logfile, "ise%u: Control file failed.\n", dev->id);
 
+	    free(dev);
 	    return 0;
       }
 

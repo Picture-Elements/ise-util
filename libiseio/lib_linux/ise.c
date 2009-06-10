@@ -42,6 +42,24 @@
 # include  <sys/types.h>
 # include  <errno.h>
 
+static ise_error_t connect_ise(struct ise_handle*dev)
+{
+      char pathx[16];
+
+      sprintf(pathx, "/dev/isex%u", dev->id);
+
+      if (__ise_logfile)
+	    fprintf(__ise_logfile, "ise%u: Opening control device %s\n",
+		    dev->id, pathx);
+
+      dev->isex = open(pathx, O_RDWR, 0);
+
+      if (dev->isex < 0)
+	    return ISE_ERROR;
+
+      return ISE_OK;
+}
+
 static ise_error_t restart_ise(struct ise_handle*dev)
 {
       if (dev->isex >= 0)
@@ -236,6 +254,7 @@ static ise_error_t readbuf_ise(struct ise_handle*dev,
 
 
 const struct ise_driver_functions __driver_ise = {
+ connect: connect_ise,
  restart: restart_ise,
  run_program: run_program_ise,
 
