@@ -17,7 +17,6 @@
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
-#ident "$Id: linux.c,v 1.19 2009/03/30 21:54:37 steve Exp $"
 
 # include  "ucrif.h"
 # include  "os.h"
@@ -25,6 +24,7 @@
 # include  <linux/module.h>
 # include  <linux/poll.h>
 # include  <linux/interrupt.h>
+# include  <linux/vmalloc.h>
 
 MODULE_LICENSE("GPL");
 
@@ -128,37 +128,47 @@ int ucr_make_frame(struct Instance*xsp, unsigned id, unsigned long size)
 	   themselves. If there is a problem, jump to error exit
 	   code. */
 
-      int tab_order;
+      dma_addr_t tab_phys;
       unsigned long tab_size = sizeof(*xsp->frame[id]);
       int use_frame64 = dev_feature_frame64(xsp) && ise_allow_frame64;
       if (use_frame64)
 	    tab_size += npages*sizeof(__u64);
       else
 	    tab_size += npages*sizeof(__u32);
-      tab_order = get_order(tab_size);
 
 	/* Allocate the frame pointer table. Keep this in 32bit memory
 	   even on 64bit systems. This may contain 32bit or 64bit
 	   pointers, but the pointer to this table is 32bit. */
       xsp->frame[id] = (struct frame_table*)
-	    __get_free_pages(GFP_KERNEL|GFP_DMA32, tab_order);
-      xsp->frame_order[id] = tab_order;
+	    dma_alloc_coherent(&xsp->pci->dev, tab_size, &tab_phys,
+			       GFP_KERNEL|GFP_DMA32);
+      xsp->frame_tabsize[id] = tab_size;
       
       if (xsp->frame[id] == 0) {
-	    printk(KERN_INFO "ise%u: error: no memory for frame table. tab_size=%lu, tab_order=%d\n",
-		   xsp->number, tab_size, tab_order);
+	    printk(KERN_INFO "ise%u: error: no memory for frame table. tab_size=%lu\n",
+		   xsp->number, tab_size);
 	    return -ENOMEM;
       }
 
+      xsp->frame_virt[id] = vmalloc(npages * sizeof(void*));
       size = npages * PAGE_SIZE;
 
       xsp->frame[id]->magic = use_frame64? FRAME_TABLE_MAGIC64 : FRAME_TABLE_MAGIC;
-      xsp->frame[id]->self  = virt_to_bus(xsp->frame[id]);
+      xsp->frame[id]->self  = tab_phys;
       xsp->frame[id]->page_size  = PAGE_SIZE;
       xsp->frame[id]->page_count = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
+      if (xsp->frame[id]->magic == FRAME_TABLE_MAGIC64) {
+	    for (idx = 0 ;  idx < xsp->frame[id]->page_count ;  idx += 1) {
+		  xsp->frame[id]->page[idx*2+0] = 0;
+		  xsp->frame[id]->page[idx*2+1] = 0;
+	    }
+      } else {
+	    for (idx = 0 ;  idx < xsp->frame[id]->page_count ;  idx += 1)
+		  xsp->frame[id]->page[idx] = 0;
+      }
       for (idx = 0 ;  idx < xsp->frame[id]->page_count ;  idx += 1)
-	    xsp->frame[id]->page[idx] = 0;
+	    xsp->frame_virt[id][idx] = 0;
 
       for (idx = 0 ;  idx < xsp->frame[id]->page_count ;  idx += 1) {
 
@@ -176,18 +186,21 @@ int ucr_make_frame(struct Instance*xsp, unsigned id, unsigned long size)
 		 allocate in 64bit address space. If not, then
 		 restrict to 32bit address space. */
 	    if (xsp->frame[id]->magic == FRAME_TABLE_MAGIC64) {
+		  dma_addr_t phys;
 		  __u64 addr_bus;
-		  addr = (void*)get_zeroed_page(GFP_KERNEL);
-		  addr_bus = virt_to_bus(addr);
+		  addr = dma_alloc_coherent(&xsp->pci->dev, PAGE_SIZE, &phys, GFP_KERNEL);
+		  addr_bus = phys;
 		  xsp->frame[id]->page[idx*2+0] = addr_bus & 0xffffffff;
 		  xsp->frame[id]->page[idx*2+1] = (addr_bus>>32) & 0xffffffff;
 	    } else {
-		  addr = (void*)get_zeroed_page(GFP_KERNEL|GFP_DMA32);
-		  xsp->frame[id]->page[idx] = virt_to_bus(addr);
+		  dma_addr_t phys;
+		  addr = dma_alloc_coherent(&xsp->pci->dev, PAGE_SIZE, &phys, GFP_KERNEL|GFP_DMA32);
+		  xsp->frame[id]->page[idx] = phys;
 	    } 
 	    if (addr == 0)
 		  goto no_mem;
 
+	    xsp->frame_virt[id][idx] = addr;
 	    ise_frame_pages_in_use += 1;
 
 	      /* Save the bus address in the frame information, and
@@ -214,27 +227,31 @@ no_mem: { /* Gack! Not enough memory, clean up what I did get and
 		   "page %u of %u frame pages.\n", xsp->number, idx, npages);
 
 	    for (jdx = 0 ;  jdx < xsp->frame[id]->page_count ;  jdx += 1) {
-		  unsigned long page;
+		  void*virt;
+		  dma_addr_t phys = frame_page_bus(xsp, id, jdx);
 
-		  if (xsp->frame[id]->page[jdx] == 0)
+		  if (phys == 0)
 			continue;
 
-		  page = (unsigned long)bus_to_virt(xsp->frame[id]->page[jdx]);
+		  virt = xsp->frame_virt[id][jdx];
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
-	    ClearPageReserved(virt_to_page(page));
+		  ClearPageReserved(virt_to_page(virt));
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
-		  mem_map_unreserve(virt_to_page(page));
+		  mem_map_unreserve(virt_to_page(virt));
 #else
-		  mem_map_unreserve(MAP_NR(page));
+		  mem_map_unreserve(MAP_NR(virt));
 #endif
-		  free_page(page);
+		  dma_free_coherent(&xsp->pci->dev, PAGE_SIZE, virt, phys);
 
 		  if (ise_frame_pages_in_use > 0)
 			ise_frame_pages_in_use -= 1;
 	    }
 
-	    kfree(xsp->frame[id]);
+	    dma_free_coherent(&xsp->pci->dev, xsp->frame_tabsize[id], xsp->frame[id], xsp->frame[id]->self);
+	    vfree(xsp->frame_virt[id]);
 	    xsp->frame[id] = 0;
+	    xsp->frame_virt[id] = 0;
+
 	    return -ENOMEM;
       }
 }
@@ -242,6 +259,7 @@ no_mem: { /* Gack! Not enough memory, clean up what I did get and
 int ucr_free_frame(struct Instance*xsp, unsigned id)
 {
       unsigned idx;
+      dma_addr_t tab_phys;
 
       if (xsp->frame[id] == 0)
 	    return -EIO;
@@ -253,25 +271,36 @@ int ucr_free_frame(struct Instance*xsp, unsigned id)
 	    printk(DEVICE_NAME "%u: release pages of frame %u\n",
 		   xsp->number, id);
 
+      if (xsp->frame[id]->magic != FRAME_TABLE_MAGIC64
+	  && xsp->frame[id]->magic != FRAME_TABLE_MAGIC) {
+	    printk(KERN_WARNING DEVICE_NAME "%u: "
+		   "Bad magic for frame %u to free! Abandoning memory.\n",
+		   xsp->number, id);
+	    xsp->frame[id] = 0;
+	    xsp->frame_tabsize[id] = 0;
+	    return 0;
+      }
+
       for (idx = 0 ;  idx < xsp->frame[id]->page_count ;  idx += 1) {
-	    __u64 page_bus = frame_page_bus(xsp, id, idx);
-	    unsigned long page = (unsigned long)bus_to_virt(page_bus);
+	    dma_addr_t phys = frame_page_bus(xsp, id, idx);
+	    void* virt = xsp->frame_virt[id][idx];
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
-	    ClearPageReserved(virt_to_page(page));
+	    ClearPageReserved(virt_to_page(virt));
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
-	    mem_map_unreserve(virt_to_page(page));
+	    mem_map_unreserve(virt_to_page(virt));
 #else
-	    mem_map_unreserve(MAP_NR(page));
+	    mem_map_unreserve(MAP_NR(virt));
 #endif
-	    free_page(page);
+	    dma_free_coherent(&xsp->pci->dev, PAGE_SIZE, virt, phys);
 
 	    if (ise_frame_pages_in_use > 0)
 		  ise_frame_pages_in_use -= 1;
       }
 
-      free_pages((unsigned long) xsp->frame[id], xsp->frame_order[id]);
+      tab_phys = xsp->frame[id]->self;
+      dma_free_coherent(&xsp->pci->dev, xsp->frame_tabsize[id], xsp->frame[id], tab_phys);
       xsp->frame[id] = 0;
-      xsp->frame_order[id] = 0;
+      xsp->frame_tabsize[id] = 0;
       return 0;
 }
 
@@ -495,7 +524,7 @@ static int xxfault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
       page_bus = frame_page_bus(xsp, frame_nr, page_nr);
 
-      vmf->page = virt_to_page(bus_to_virt(page_bus));
+      vmf->page = virt_to_page(xsp->frame_virt[frame_nr][page_nr]);
       get_page(vmf->page);
 
       return 0;
@@ -856,61 +885,3 @@ static void __exit cleanup_ise_module(void)
 
 module_init(init_ise_module);
 module_exit(cleanup_ise_module);
-
-/*
- * $Log: linux.c,v $
- * Revision 1.19  2009/03/30 21:54:37  steve
- *  Cimpatibility w/ 2.6.27 and 64bit kernels.
- *
- * Revision 1.18  2009/02/06 19:21:30  steve
- *  Add read/write console for the ISE driver.
- *
- * Revision 1.17  2009/02/05 17:06:57  steve
- *  Support for frame64 frame table pointers.
- *
- * Revision 1.16  2008/12/12 00:22:21  steve
- *  Get reference count of frame pages right.
- *
- * Revision 1.15  2008/10/09 00:00:23  steve-icarus
- *  REMOVE saves state of bridge as well as BJE device.
- *
- * Revision 1.14  2008/10/08 17:48:19  steve-icarus
- *  Module reference counts for 2.6
- *
- * Revision 1.13  2008/09/09 21:59:05  steve
- *  Need to enable device early, to get access to interrupts.
- *
- * Revision 1.12  2008/09/08 22:29:50  steve
- *  Build for 2.6 kernel
- *
- * Revision 1.11  2008/09/08 17:11:57  steve
- *  Support EJSE boards.
- *
- * Revision 1.10  2008/08/25 22:27:31  steve
- *  Better portability in the Linux universe.
- *
- * Revision 1.9  2005/03/08 19:35:01  steve-icarus
- *  Up to 4 ise/jse boards.
- *
- * Revision 1.8  2004/10/22 01:12:27  steve
- *  Keep frame allocation from getting out of hand.
- *
- * Revision 1.7  2004/03/26 20:35:21  steve
- *  Add support for JSE device.
- *
- * Revision 1.6  2002/10/21 19:04:45  steve
- *  License information for modload.
- *
- * Revision 1.5  2002/05/08 20:09:41  steve
- *  Add the /proc/driver/isecons log file.
- *
- * Revision 1.4  2002/05/08 04:54:27  steve
- *  Add 2.2 kernel compatibility.
- *
- * Revision 1.3  2001/12/04 22:50:57  steve
- *  Make atomic_sleep_on interruptible.
- *
- * Revision 1.2  2001/09/22 20:16:38  steve
- *  Longer timeout for root tables.
- */
-
