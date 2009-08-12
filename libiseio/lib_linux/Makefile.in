@@ -49,7 +49,7 @@ LDFLAGS = @LDFLAGS@
 
 all: libiseio.so
 
-O = libiseio.o ise.o
+O = libiseio.o ise.o ipkg.o
 
 libiseio.so: $O
 	cc -shared -o libiseio.so $O
@@ -76,4 +76,5 @@ distclean: clean
 	rm -f Makefile config.cache config.status config.log
 
 libiseio.o: libiseio.c priv.h ../libiseio.h
-ise.o: ise.c priv.h ../libiseio.h
+ise.o:      ise.c priv.h ../libiseio.h
+ipkg.o:     ipkg.c priv.h ../libiseio.h

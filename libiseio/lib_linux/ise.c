@@ -28,6 +28,7 @@
 
 # include  <libiseio.h>
 # include  "priv.h"
+# include  <assert.h>
 
 /*
  * This is the implementation of libiseio that uses the ise device
@@ -135,12 +136,16 @@ static ise_error_t channel_open_ise(struct ise_handle*dev,
       return ISE_OK;
 }
 
-static ise_error_t channel_close_ise(struct ise_handle*dev,
-				     struct ise_channel*chn,
-				     int sync_flag)
+static ise_error_t channel_sync_ise(struct ise_handle*dev,
+				    struct ise_channel*chn)
 {
-      if (sync_flag)
-	    ioctl(chn->fd, UCR_SYNC, 0);
+      ioctl(chn->fd, UCR_SYNC, 0);
+      return ISE_OK;
+}
+
+static ise_error_t channel_close_ise(struct ise_handle*dev,
+				     struct ise_channel*chn)
+{
       close(chn->fd);
       chn->fd = -1;
       return ISE_OK;
@@ -196,7 +201,7 @@ static void delete_frame_ise(struct ise_handle*dev, unsigned id)
 
 static ise_error_t write_ise(struct ise_handle*dev,
 			     struct ise_channel*chn,
-			     const char*buf, size_t nbuf)
+			     const void*buf, size_t nbuf)
 {
       write(chn->fd, buf, nbuf);
       return ISE_OK;
@@ -260,6 +265,7 @@ const struct ise_driver_functions __driver_ise = {
 
  channel_open: channel_open_ise,
  channel_close: channel_close_ise,
+ channel_sync: channel_sync_ise,
  timeout: timeout_ise,
 
  make_frame:  make_frame_ise,

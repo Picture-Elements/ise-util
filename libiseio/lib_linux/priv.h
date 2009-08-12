@@ -55,6 +55,8 @@ struct ise_handle {
 };
 
 extern FILE*__ise_logfile;
+extern struct ise_channel*__ise_find_channel(struct ise_handle*dev, unsigned cid);
+
 
 struct ise_driver_functions {
 
@@ -71,9 +73,10 @@ struct ise_driver_functions {
 	/* Open a channel by number and return the raw fd. */
       ise_error_t (*channel_open)(struct ise_handle*dev,
 				  struct ise_channel*chn);
+      ise_error_t (*channel_sync) (struct ise_handle*dev,
+				   struct ise_channel*chn);
       ise_error_t (*channel_close)(struct ise_handle*dev,
-				   struct ise_channel*chn,
-				   int sync_flag);
+				   struct ise_channel*chn);
 
 	/* Set the read timeout for a channel */
       ise_error_t (*timeout)(struct ise_handle*dev, unsigned cid,
@@ -85,7 +88,7 @@ struct ise_driver_functions {
 	/* Write raw data through the channel */
       ise_error_t (*write)(struct ise_handle*dev,
 			   struct ise_channel*chn,
-			   const char*buf, size_t nbuf);
+			   const void*buf, size_t nbuf);
 
 	/* Write a line of text to the channel. */
       ise_error_t (*writeln)(struct ise_handle*dev,

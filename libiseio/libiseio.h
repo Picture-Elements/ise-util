@@ -239,33 +239,10 @@ EXTERN void  ise_delete_frame(struct ise_handle*dev, unsigned id);
 EXTERN void ise_close(struct ise_handle*dev);
 
 /*
- * $Log: libiseio.h,v $
- * Revision 1.9  2006/08/10 00:12:56  steve
- *  Allow an ise_bind handle to set timeouts and open frames.
- *
- * Revision 1.8  2006/07/13 17:40:36  steve
- *  ise_close does not reset board if opened by ise_bind.
- *
- * Revision 1.7  2005/08/09 00:10:25  steve
- *  Add the ise_bind function.
- *
- * Revision 1.6  2002/05/10 22:56:01  steve
- *  Make readln/writeln parallelizeable.
- *
- * Revision 1.5  2002/04/11 21:59:54  steve
- *  Useage comments.
- *
- * Revision 1.4  2001/07/16 19:59:36  steve
- *  Make timeout features of driver available to API.
- *
- * Revision 1.3  2000/07/24 21:44:07  steve
- *  Release 2.0
- *
- * Revision 1.2  2000/06/29 18:45:23  steve
- *  Clarify some channel comments.
- *
- * Revision 1.1  2000/06/27 22:51:22  steve
- *  Add libiseio for Linux.
- *
+ * This is a function for sending update packages to the jse board.
  */
+EXTERN ise_error_t ise_send_package(struct ise_handle*dev, const char*name,
+				    const void*pkg_data, size_t ndata,
+				    void (*status_msgs)(const char*txt));
+
 #endif

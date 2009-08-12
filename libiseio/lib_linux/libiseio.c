@@ -44,6 +44,16 @@
 
 FILE*__ise_logfile = 0;
 
+struct ise_channel* __ise_find_channel(struct ise_handle*dev, unsigned cid)
+{
+      struct ise_channel*chn = dev->clist;
+
+      while (chn && chn->cid != cid)
+	    chn = chn->next;
+
+      return chn;
+}
+
 const char*ise_error_msg(ise_error_t code)
 {
       switch (code) {
@@ -121,7 +131,7 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 		  fprintf(__ise_logfile, "ise%u: **** No firmware, "
 			  "giving up.\n", dev->id, path);
 
-	    dev->fun->channel_close(dev, &ch0, 0);
+	    dev->fun->channel_close(dev, &ch0);
 	    return ISE_NO_SCOF;
       }
 
@@ -148,7 +158,8 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 	   are done writing the program into the board. The SYNC is
 	   needed to make sure all the bytes are on the target board
 	   before the channel buffers are removed by the close. */
-      dev->fun->channel_close(dev, &ch0, 1);
+      dev->fun->channel_sync(dev, &ch0);
+      dev->fun->channel_close(dev, &ch0);
 
       if (__ise_logfile) {
 	    fprintf(__ise_logfile, "ise%u: running program\n", dev->id);
@@ -212,11 +223,8 @@ void ise_delete_frame(struct ise_handle*dev, unsigned id)
 ise_error_t ise_writeln(struct ise_handle*dev, unsigned cid,
 			const char*text)
 {
-      struct ise_channel*chn = dev->clist;
+      struct ise_channel*chn = __ise_find_channel(dev, cid);
       int rc;
-
-      while (chn && (chn->cid != cid))
-	    chn = chn->next;
 
       if (chn == 0)
 	    return ISE_NO_CHANNEL;
@@ -233,12 +241,9 @@ ise_error_t ise_writeln(struct ise_handle*dev, unsigned cid,
 ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 		       char*buf, size_t nbuf)
 {
-      struct ise_channel*chn = dev->clist;
+      struct ise_channel*chn = __ise_find_channel(dev, cid);
       ise_error_t rc;
       char*bp;
-
-      while (chn && (chn->cid != cid))
-	    chn = chn->next;
 
       if (chn == 0)
 	    return ISE_NO_CHANNEL;
@@ -386,7 +391,7 @@ struct ise_handle*ise_open(const char*name)
       dev->fun->restart(dev);
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: Open ise%u monitor port\n", dev->id);
+	    fprintf(__ise_logfile, "ise%u: Open ise%u monitor port\n", dev->id, dev->id);
 
       mon.fd = -1;
       mon.cid = 254;
@@ -454,7 +459,7 @@ struct ise_handle*ise_open(const char*name)
 
 	/* All done with this setup. Close the monitor channel and
 	   reset the ISE board. */
-      dev->fun->channel_close(dev, &mon, 0);
+      dev->fun->channel_close(dev, &mon);
 
       if (__ise_logfile)
 	    fprintf(__ise_logfile, "ise%u: Restart device\n", dev->id);
@@ -494,7 +499,7 @@ void ise_close(struct ise_handle*dev)
 		  fprintf(__ise_logfile, "ise%u: Close channel %u\n",
 			  dev->id, chn->cid);
 
-	    dev->fun->channel_close(dev, chn, 0);
+	    dev->fun->channel_close(dev, chn);
 	    free(chn);
       }
 
