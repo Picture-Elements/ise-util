@@ -17,11 +17,11 @@
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
-#ident "$Id: isecons.c,v 1.6 2009/03/30 21:54:37 steve Exp $"
 
 # include  "ucrif.h"
 # include  "os.h"
 # include  "ucrpriv.h"
+# include  <linux/vmalloc.h>
 # include  <linux/kernel.h>
 # include  <linux/proc_fs.h>
 
@@ -201,27 +201,4 @@ static int isecons_write(struct file*file, const char __user*buffer,
 
       return count;
 }
-
-
-/*
- * $Log: isecons.c,v $
- * Revision 1.6  2009/03/30 21:54:37  steve
- *  Cimpatibility w/ 2.6.27 and 64bit kernels.
- *
- * Revision 1.5  2009/02/06 19:21:30  steve
- *  Add read/write console for the ISE driver.
- *
- * Revision 1.4  2008/12/01 16:17:02  steve-icarus
- *  More robust channel table handling.
- *
- * Revision 1.3  2008/08/25 22:27:31  steve
- *  Better portability in the Linux universe.
- *
- * Revision 1.2  2004/03/26 20:35:21  steve
- *  Add support for JSE device.
- *
- * Revision 1.1  2002/05/08 20:09:41  steve
- *  Add the /proc/driver/isecons log file.
- *
- */
 

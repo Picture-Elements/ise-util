@@ -25,9 +25,6 @@
  *    binary (compiled) form. If you have not received it, contact
  *    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
  */
-#if !defined(WINNT)
-#ident "$Id: ucr.c,v 1.7 2008/12/01 16:17:02 steve-icarus Exp $"
-#endif
 
 /*
  * See README.txt for a detailed description of how the interaction
@@ -54,23 +51,25 @@ unsigned debug_flag = 0;
  */
 void ucr_init_instance(struct Instance*xsp)
 {
+      dma_addr_t baddr;
       unsigned idx;
       xsp->dev = 0;
       xsp->suspense = 0;
       xsp->channels = 0;
 
-      xsp->root = (struct root_table*)allocate_real_page();
+      xsp->root = (struct root_table*)allocate_real_page(xsp, &baddr);
       init_waitqueue_head(&xsp->root_sync);
       init_waitqueue_head(&xsp->dispatch_sync);
 
       xsp->root->magic = ROOT_TABLE_MAGIC;
-      xsp->root->self  = virt_to_bus(xsp->root);
+      xsp->root->self  = baddr;
 
       for (idx = 0 ;  idx < 16 ;  idx += 1) {
 	    xsp->root->frame_table[idx].ptr = 0;
 	    xsp->root->frame_table[idx].magic = 0;
 	    xsp->frame[idx] = 0;
 	    xsp->frame_ref[idx] = 0;
+	    xsp->frame_virt[idx] = 0;
       }
 
       for (idx = 0 ;  idx < ROOT_TABLE_CHANNELS ;  idx += 1) {
@@ -78,12 +77,12 @@ void ucr_init_instance(struct Instance*xsp)
 	    xsp->root->chan[idx].magic = 0;
       }
 
-      xsp->channel_table_pool = (struct channel_table*)allocate_real_page();
+      xsp->channel_table_pool = (struct channel_table*)allocate_real_page(xsp, &baddr);
       for (idx = 0 ; idx < (PAGE_SIZE/sizeof(struct channel_table)) ; idx += 1) {
 	    xsp->channel_table_pool[idx].magic = 0;
 	    xsp->channel_table_pool[idx].self = 0;
       }
-      xsp->channel_table_phys = virt_to_bus(xsp->channel_table_pool);
+      xsp->channel_table_phys = baddr;
 }
 
 void ucr_clear_instance(struct Instance*xsp)
@@ -93,7 +92,7 @@ void ucr_clear_instance(struct Instance*xsp)
 	    if (xsp->frame[idx])
 		  ucr_free_frame(xsp, idx);
 
-      free_real_page(xsp->channel_table_pool);
+      free_real_page(xsp, xsp->channel_table_pool, xsp->channel_table_phys);
 }
 
 static struct channel_table*allocate_channel_table(struct Instance*xsp)
@@ -221,22 +220,24 @@ static int root_to_board(struct Instance*xsp, __u32 root)
  */
 static struct root_table* duplicate_root(struct Instance*xsp)
 {
-      struct root_table*rp = allocate_real_page();
+      dma_addr_t phys;
+      struct root_table*rp = allocate_real_page(xsp, &phys);
       if (rp == 0) {
 	    printk(DEVICE_NAME "%u: ERROR ALLOCATING A ROOT PAGE.\n",
 		   xsp->number);
 	    return 0;
       }
       memcpy(rp, xsp->root, sizeof*rp);
-      rp->self = virt_to_bus(rp);
+      rp->self = phys;
       return rp;
 }
 
-static void release_root(struct root_table*rp)
+static void release_root(struct Instance*xsp, struct root_table*rp)
 {
+      dma_addr_t phys = rp->self;
       rp->magic = 0x11111111;
       rp->self = 0;
-      free_real_page(rp);
+      free_real_page(xsp, rp, phys);
 }
 
 static int root_to_board_free(struct Instance*xsp, struct root_table*rp)
@@ -244,7 +245,7 @@ static int root_to_board_free(struct Instance*xsp, struct root_table*rp)
       int rc;
 
       rc = root_to_board(xsp, rp->self);
-      release_root(xsp->root);
+      release_root(xsp, xsp->root);
       xsp->root = rp;
       return rc;
 }
@@ -603,14 +604,16 @@ int ucr_open(struct Instance*xsp, struct ChannelData*xpd)
       xpd->table->next_in_idx   = 0;
 
       for (idx = 0 ;  idx < CHANNEL_IBUFS ;  idx += 1) {
-	    xpd->in[idx] = allocate_real_page();
-	    xpd->table->in[idx].ptr = virt_to_bus(xpd->in[idx]);
+	    dma_addr_t phys;
+	    xpd->in[idx] = allocate_real_page(xsp, &phys);
+	    xpd->table->in[idx].ptr = phys;
 	    xpd->table->in[idx].count = PAGE_SIZE;
       }
 
       for (idx = 0 ;  idx < CHANNEL_OBUFS ;  idx += 1) {
-	    xpd->out[idx] = allocate_real_page();
-	    xpd->table->out[idx].ptr = virt_to_bus(xpd->out[idx]);
+	    dma_addr_t phys;
+	    xpd->out[idx] = allocate_real_page(xsp, &phys);
+	    xpd->table->out[idx].ptr = phys;
 	    xpd->table->out[idx].count = PAGE_SIZE;
       }
 
@@ -974,82 +977,3 @@ int ucr_irq(struct Instance*xsp)
 
       return mask != 0;
 }
-
-/*
- * $Log: ucr.c,v $
- * Revision 1.7  2008/12/01 16:17:02  steve-icarus
- *  More robust channel table handling.
- *
- * Revision 1.6  2008/09/08 22:29:50  steve
- *  Build for 2.6 kernel
- *
- * Revision 1.5  2008/08/25 22:27:31  steve
- *  Better portability in the Linux universe.
- *
- * Revision 1.4  2005/08/09 22:48:32  steve
- *  Close synchronization loopholes with multiple channels.
- *
- * Revision 1.3  2004/03/26 20:35:21  steve
- *  Add support for JSE device.
- *
- * Revision 1.2  2002/03/26 03:13:47  steve
- *  Implement hotswap ioctls.
- *
- * Revision 1.1  2001/08/02 03:45:44  steve
- *  Linux 2.4 version of the driver.
- *
- * Revision 1.3  2001/07/11 23:47:38  steve
- *  Add ucrx_timeout device controls.
- *
- * Revision 1.2  2001/07/10 17:20:47  steve
- *  Clean out the ccp_t bits.
- *
- * Revision 1.1  2001/03/03 01:30:49  steve
- *  Make an isolated linux driver source tree.
- *
- * Revision 1.15  2000/06/26 22:07:45  steve
- *  Close some channel races.
- *
- * Revision 1.14  2000/02/18 19:40:55  steve
- *  More channel diagnostics.
- *
- * Revision 1.13  1999/07/15 16:37:37  steve
- *  isolate read and write activities under NT.
- *
- * Revision 1.12  1999/04/07 01:48:28  steve
- *  More frame tracing.
- *
- * Revision 1.11  1999/04/02 00:27:45  steve
- *  IRQ sharing fix for NT.
- *
- * Revision 1.10  1998/12/02 00:52:29  steve
- *  Improved frame handling and debugging.
- *
- * Revision 1.9  1998/09/23 23:12:57  steve
- *  Better detect diagnose broken interrupts.
- *
- * Revision 1.8  1998/08/14 21:59:51  steve
- *  Get rid of warning.
- *
- * Revision 1.7  1998/07/16 22:50:05  steve
- *  Detailed frame test prints.
- *
- * Revision 1.6  1998/07/10 22:54:23  steve
- *  Work around HalTranslateBusAddress bug.
- *
- * Revision 1.5  1998/05/30 01:55:49  steve
- * lose test print.
- *
- * Revision 1.4  1998/05/30 01:49:52  steve
- *  Handle startup after reset.
- *
- * Revision 1.3  1998/05/29 18:11:22  steve
- *  Proper cancel/abort behavior for NT.
- *
- * Revision 1.2  1998/05/28 22:53:02  steve
- *  NT port.
- *
- * Revision 1.1  1998/05/26 16:16:34  steve
- *  New channel protocol
- *
- */

@@ -19,7 +19,6 @@
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
-#ident "$Id: ucrpriv.h,v 1.10 2009/02/06 19:21:30 steve Exp $"
 
 # define DEVICE_NAME "ise"
 
@@ -106,7 +105,8 @@ struct Instance {
 	   frame via __get_free_pages. It is needed for release. */
       struct frame_table*frame[16];
       unsigned frame_ref[16];
-      int frame_order[16];
+      size_t frame_tabsize[16];
+      void**frame_virt[16];
 
       wait_queue_head_t dispatch_sync;
 
@@ -279,40 +279,6 @@ extern int ejsex_remove(struct Instance*xsp);
 extern int ejsex_replace(struct Instance*xsp);
 
 extern void ejsex_diagnose_dump(struct Instance*xsp);
-
-/*
- * $Log: ucrpriv.h,v $
- * Revision 1.10  2009/02/06 19:21:30  steve
- *  Add read/write console for the ISE driver.
- *
- * Revision 1.9  2009/02/05 17:06:57  steve
- *  Support for frame64 frame table pointers.
- *
- * Revision 1.8  2008/12/01 16:17:02  steve-icarus
- *  More robust channel table handling.
- *
- * Revision 1.7  2008/09/08 17:11:57  steve
- *  Support EJSE boards.
- *
- * Revision 1.6  2008/08/25 22:27:31  steve
- *  Better portability in the Linux universe.
- *
- * Revision 1.5  2004/03/26 20:35:22  steve
- *  Add support for JSE device.
- *
- * Revision 1.4  2002/05/08 20:09:41  steve
- *  Add the /proc/driver/isecons log file.
- *
- * Revision 1.3  2002/05/08 05:09:35  steve
- *  reset and restart need to recover PIALR register.
- *
- * Revision 1.2  2002/03/26 03:13:47  steve
- *  Implement hotswap ioctls.
- *
- * Revision 1.1  2001/08/02 03:45:44  steve
- *  Linux 2.4 version of the driver.
- *
- */
 
 
 #endif
