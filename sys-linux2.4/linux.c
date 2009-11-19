@@ -775,9 +775,9 @@ static int ise_probe(struct pci_dev*dev, const struct pci_device_id*id)
 	    return -EIO;
       }
 
-      ucr_init_instance(xsp);
       xsp->number = num_dev;
       xsp->pci = dev;
+      ucr_init_instance(xsp);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
       dev->dev.driver_data = xsp;
 #else
