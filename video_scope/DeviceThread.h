@@ -50,7 +50,8 @@ class DeviceThread  : public QThread {
 	// Signal the scof version string when the board is loaded.
       void diagjse_version(const QString&text);
 	// Signal the measured video width.
-      void video_width(unsigned wid);
+      void video0_width(unsigned wid);
+      void video1_width(unsigned wid);
 	// Signal that a new live-display is ready.
       void live_display(const QImage&chart);
 
@@ -74,7 +75,8 @@ class DeviceThread  : public QThread {
       unsigned long blu_line_[64*1024];
 
 	// Measured video width, or 0 if not measured yet.
-      unsigned video_width_;
+      unsigned video0_width_;
+      unsigned video1_width_;
       bool live_flag_;
 
       QTimer clock_;

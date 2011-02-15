@@ -60,8 +60,10 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
 	      ui.scof_version_box, SLOT(setText(const QString&)));
 
 	// Receive video_width signals from the device thread.
-      connect(&device_, SIGNAL(video_width(unsigned)),
-	      SLOT(video_width_slot_(unsigned)));
+      connect(&device_, SIGNAL(video0_width(unsigned)),
+	      SLOT(video0_width_slot_(unsigned)));
+      connect(&device_, SIGNAL(video1_width(unsigned)),
+	      SLOT(video1_width_slot_(unsigned)));
 
 	// Receive a live_display chart image from the device.
       connect(&device_, SIGNAL(live_display(const QImage&)),
@@ -97,14 +99,24 @@ void VideoScopeMain::attach_check_slot_(int state)
       }
 }
 
-void VideoScopeMain::video_width_slot_(unsigned wid)
+void VideoScopeMain::video0_width_slot_(unsigned wid)
 {
       QString tmp ("N/A");
       if (wid != 0) {
 	    tmp.setNum(wid);
       }
 
-      ui.measured_width_box->setText(tmp);
+      ui.measured_width0_box->setText(tmp);
+}
+
+void VideoScopeMain::video1_width_slot_(unsigned wid)
+{
+      QString tmp ("N/A");
+      if (wid != 0) {
+	    tmp.setNum(wid);
+      }
+
+      ui.measured_width1_box->setText(tmp);
 }
 
 void VideoScopeMain::live_display_slot_(const QImage&chart)

@@ -40,7 +40,8 @@ class VideoScopeMain  : public QMainWindow {
 
     private slots:
       void attach_check_slot_(int state);
-      void video_width_slot_(unsigned wid);
+      void video0_width_slot_(unsigned wid);
+      void video1_width_slot_(unsigned wid);
       void live_display_slot_(const QImage&chart);
 
     signals:

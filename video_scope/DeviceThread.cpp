@@ -29,7 +29,8 @@ DeviceThread::DeviceThread(QObject*parent)
       dev_ = 0;
       dev_frame_ = 0;
       dev_frame_size_ = 0;
-      video_width_ = 0;
+      video0_width_ = 0;
+      video1_width_ = 0;
       live_flag_ = false;
       clock_.setSingleShot(false);
 }
@@ -56,21 +57,24 @@ void DeviceThread::attach_board(const QString&text)
 
       if (text.isEmpty()) {
 	    emit diagjse_version(QString("no device"));
-	    emit video_width(0);
+	    emit video0_width(0);
+	    emit video1_width(0);
 	    return;
       }
 
       dev_ = ise_open(text.toStdString().c_str());
       if (dev_ == 0) {
 	    emit diagjse_version(QString("no device"));
-	    emit video_width(0);
+	    emit video0_width(0);
+	    emit video1_width(0);
 	    return;
       }
 
       ise_rc = ise_restart(dev_, "diagjse");
       if (ise_rc != ISE_OK) {
 	    emit diagjse_version(QString("no diagjse"));
-	    emit video_width(0);
+	    emit video0_width(0);
+	    emit video1_width(0);
 	    ise_close(dev_);
 	    dev_ = 0;
 	    return;
@@ -96,8 +100,10 @@ void DeviceThread::attach_board(const QString&text)
 
 	// Start out not knowing the width of the video. Set the video
 	// width to 0 and signal this empty width.
-      video_width_ = 0;
-      emit video_width(0);
+      video0_width_ = 0;
+      video1_width_ = 0;
+      emit video0_width(0);
+      emit video1_width(0);
 
 	// Start a timer to query the geometry. It is enough to query
 	// every 200ms.
@@ -125,7 +131,7 @@ void DeviceThread::enable_live_mode(int state)
 
       if (flag) {
 	    live_flag_ = true;
-	    if (video_width_ == 0)
+	    if (video0_width_ == 0 && video1_width_ == 0)
 		  return;
 
 	    if (dev_)
@@ -147,7 +153,7 @@ void DeviceThread::clock_slot_(void)
 
 	// If the clock is ticking and I have no video width, then the
 	// tick is saying it is time to try again to query the geometry.
-      if (video_width_ == 0) {
+      if (video0_width_ == 0 && video1_width_ == 0) {
 
 	      // Send the "get geometry" command
 	    ise_writeln(dev_, 3, "<geo>get geometry");
@@ -171,13 +177,19 @@ void DeviceThread::clock_slot_(void)
 
 		  if (word.startsWith(QString("width="))) {
 			word.remove(0, 6);
-			video_width_ = word.toUInt();
-			emit video_width(video_width_);
+			video0_width_ = word.toUInt();
+			emit video0_width(video0_width_);
+		  }
+
+		  if (word.startsWith(QString("width1="))) {
+			word.remove(0, 7);
+			video1_width_ = word.toUInt();
+			emit video1_width(video1_width_);
 		  }
 	    }
 
 	      // If we got the video width, then stop the clock.
-	    if (video_width_ != 0) {
+	    if (video0_width_ != 0 || video1_width_ != 0) {
 		  activate_live_mode_(live_flag_);
 	    }
       }
