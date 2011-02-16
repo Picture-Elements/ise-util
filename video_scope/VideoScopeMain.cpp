@@ -37,6 +37,8 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
       live_display_scene_->addItem(live_display_pixmap_);
       ui.scope_view->setScene(live_display_scene_);
 
+      ui.live_mode_check->setEnabled(false);
+
       detect_ise_boards_();
       device_.start();
 
@@ -58,6 +60,12 @@ VideoScopeMain::VideoScopeMain(QWidget*parent)
 	// directly to the scof_version_box widget.
       connect(&device_, SIGNAL(diagjse_version(const QString&)),
 	      ui.scof_version_box, SLOT(setText(const QString&)));
+
+	// Connect the port enable directly to the port_select of the
+	// device thread.
+      connect(ui.enable_port_select,
+	      SIGNAL(currentIndexChanged(int)),
+	      &device_, SLOT(port_select(int)));
 
 	// Receive video_width signals from the device thread.
       connect(&device_, SIGNAL(video0_width(unsigned)),
@@ -90,10 +98,13 @@ void VideoScopeMain::detect_ise_boards_(void)
 
 void VideoScopeMain::attach_check_slot_(int state)
 {
+      ui.live_mode_check->setChecked(false);
       if (state) {
+	    ui.live_mode_check->setEnabled(true);
 	    QString tmp = ui.board_select->currentText();
 	    emit attach_board(tmp);
       } else {
+	    ui.live_mode_check->setEnabled(false);
 	    QString tmp;
 	    emit attach_board(tmp);
       }

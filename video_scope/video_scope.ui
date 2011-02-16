@@ -68,6 +68,36 @@
          <string>Status</string>
         </property>
         <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <widget class="QLineEdit" name="measured_width0_box">
+             <property name="focusPolicy">
+              <enum>Qt::NoFocus</enum>
+             </property>
+             <property name="acceptDrops">
+              <bool>false</bool>
+             </property>
+             <property name="toolTip">
+              <string>Measured width of video port 0, if present.</string>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="measured_width1_box">
+             <property name="toolTip">
+              <string>Measured width of video port 1, if present.</string>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
          <item row="0" column="0">
           <widget class="QLabel" name="label">
            <property name="text">
@@ -101,43 +131,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <item>
-            <widget class="QLineEdit" name="measured_width0_box">
-             <property name="focusPolicy">
-              <enum>Qt::NoFocus</enum>
-             </property>
-             <property name="acceptDrops">
-              <bool>false</bool>
-             </property>
-             <property name="toolTip">
-              <string>Measured width of video port 0, if present.</string>
-             </property>
-             <property name="readOnly">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="measured_width1_box">
-             <property name="toolTip">
-              <string>Measured width of video port 1, if present.</string>
-             </property>
-             <property name="readOnly">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
         </layout>
-        <zorder>label</zorder>
-        <zorder>scof_version_box</zorder>
-        <zorder>label_2</zorder>
-        <zorder>measured_width0_box</zorder>
-        <zorder>measured_width1_box</zorder>
-        <zorder>measured_width0_box</zorder>
        </widget>
       </item>
      </layout>
@@ -147,7 +141,7 @@
       <property name="title">
        <string>Settings</string>
       </property>
-      <layout class="QGridLayout">
+      <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
@@ -190,7 +184,25 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="video_flags_entry"/>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLineEdit" name="video_flags_entry"/>
+         </item>
+         <item>
+          <widget class="QComboBox" name="enable_port_select">
+           <item>
+            <property name="text">
+             <string>enable port 0</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>enable port 1</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

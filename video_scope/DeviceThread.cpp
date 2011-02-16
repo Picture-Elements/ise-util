@@ -21,7 +21,10 @@
 # include  "DeviceThread.h"
 # include  <QTimer>
 # include  <QStringList>
+# include  <iostream>
 # include  <assert.h>
+
+using namespace std;
 
 DeviceThread::DeviceThread(QObject*parent)
 : QThread(parent), clock_(parent)
@@ -31,6 +34,7 @@ DeviceThread::DeviceThread(QObject*parent)
       dev_frame_size_ = 0;
       video0_width_ = 0;
       video1_width_ = 0;
+      port_select_ = 0;
       live_flag_ = false;
       clock_.setSingleShot(false);
 }
@@ -110,13 +114,38 @@ void DeviceThread::attach_board(const QString&text)
       clock_.start(200);
 }
 
+void DeviceThread::port_select(int port)
+{
+      if (port < 0)
+	    port_select_ = 0;
+      else if (port > 1)
+	    port_select_ = 0;
+      else
+	    port_select_ = port;
+}
+
 void DeviceThread::activate_live_mode_(bool flag)
 {
       if (flag) {
+	    if (video0_width_>0 && video1_width_==0) {
+		  ise_writeln(dev_, 3, "set video-flag enable-video0 disable-video1");
+		  ise_readln(dev_, 3, buf_, sizeof buf_);
+	    } else if (video0_width_==0 && video1_width_>0) {
+		  ise_writeln(dev_, 3, "set video-flag disable-video0 enable-video1");
+		  ise_readln(dev_, 3, buf_, sizeof buf_);
+	    } else if (port_select_ == 0) {
+		  ise_writeln(dev_, 3, "set video-flag enable-video0 disable-video1");
+		  ise_readln(dev_, 3, buf_, sizeof buf_);
+	    } else {
+		  ise_writeln(dev_, 3, "set video-flag disable-video0 enable-video1");
+		  ise_readln(dev_, 3, buf_, sizeof buf_);
+	    }
 	    ise_writeln(dev_, 3, "set video-flag live");
 	    ise_readln(dev_, 3, buf_, sizeof buf_);
 	    clock_.start(300);
       } else {
+	    ise_writeln(dev_, 3, "set video-flag enable-video0 enable-video1");
+	    ise_readln(dev_, 3, buf_, sizeof buf_);
 	    ise_writeln(dev_, 3, "set video-flag page");
 	    ise_readln(dev_, 3, buf_, sizeof buf_);
 	    clock_.stop();
@@ -198,13 +227,17 @@ void DeviceThread::clock_slot_(void)
 	    ise_writeln(dev_, 3, "get readable");
 	    ise_readln(dev_, 3, buf_, sizeof buf_);
 
-	    QString line (buf_);
-	    if (line.toUInt() > 0) {
-		  ise_writeln(dev_, 3, "read 0");
-		  ise_readln(dev_, 3, buf_, sizeof buf_);
+	    if (QString(buf_).toUInt() > 0) {
+		  ise_writeln(dev_, 3, "<rd>read 0");
+		  do {
+			ise_readln(dev_, 3, buf_, sizeof buf_);
+		  } while (strncmp(buf_, "<rd>", 4) != 0);
 
 		  unsigned wid, hei, dep;
-		  int cnt = sscanf(buf_, "video %ux%ux%u", &wid, &hei, &dep);
+		  int cnt = sscanf(buf_, "<rd>video %ux%ux%u", &wid, &hei, &dep);
+		  if (cnt != 3) {
+			cerr << "ERROR: Got from read 0:" << buf_ << endl;
+		  }
 		  assert(cnt == 3);
 
 		  for (unsigned idx = 0 ; idx < wid ; idx += 1) {

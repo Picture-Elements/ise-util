@@ -43,6 +43,9 @@ class DeviceThread  : public QThread {
 	// the name is empty, then detach from any existing board.
       void attach_board(const QString&name);
 
+	// Select the port to use.
+      void port_select(int port);
+
 	// command to enable/disable live mode.
       void enable_live_mode(int state);
 
@@ -77,6 +80,7 @@ class DeviceThread  : public QThread {
 	// Measured video width, or 0 if not measured yet.
       unsigned video0_width_;
       unsigned video1_width_;
+      int port_select_;
       bool live_flag_;
 
       QTimer clock_;
