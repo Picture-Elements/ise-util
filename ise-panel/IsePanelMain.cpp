@@ -94,24 +94,24 @@ const IsePanelMain::handle_t IsePanelMain::NO_DEV = -1;
 IsePanelMain::handle_t IsePanelMain::open_dev_(unsigned dev_id)
 {
       char path[64];
-      snprintf(path, sizeof path, "/dev/isex%u", idx);
+      snprintf(path, sizeof path, "/dev/isex%u", dev_id);
 
       return ::open(path, O_RDWR, 0);
 }
 
-IsePandlMain::handle_t IsePanelMain::open_con_(void)
+IsePanelMain::handle_t IsePanelMain::open_con_(void)
 {
       return ::open("/proc/driver/isecons", O_RDONLY, 0);
 }
 
-int IsePanelMain::read_fd_(IsePanelMain::handle_t fd, char*buf, size_t len)
+size_t IsePanelMain::read_fd_(IsePanelMain::handle_t fd, char*buf, size_t len)
 {
-      return ::read(fd, buf, sizeof buf-1);
+      return ::read(fd, buf, len);
 }
 
 int IsePanelMain::ioctl_fd_(IsePanelMain::handle_t fd, unsigned long cmd, int arg)
 {
-      return ::ioctl(fd, cmd, code);
+      return ::ioctl(fd, cmd, arg);
 }
 
 void IsePanelMain::close_fd_(IsePanelMain::handle_t fd)
