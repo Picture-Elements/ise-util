@@ -17,7 +17,6 @@
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
-#ident "$Id: dev_ise.c,v 1.3 2008/09/08 22:29:50 steve Exp $"
 
 /*
  * The ISE board has on it a PCI-PCI bridge (function unit 0) and an
@@ -196,12 +195,16 @@ void ise_unmask_irqs(struct Instance*xsp, unsigned long mask)
  */
 static struct pci_dev*i960rp_to_bridge(struct pci_dev*pci)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
+      return pci->bus->self;
+#else
       unsigned bus = pci->bus->number;
       unsigned dfn = pci->devfn;
 	/* Clear the function bits. */
       dfn &= ~7;
 	/* Lookup and return the PCI device by calculated devfn. */
       return pci_find_slot(bus, dfn);
+#endif
 }
 
 void ise_soft_reset(struct Instance*xsp, int flag)

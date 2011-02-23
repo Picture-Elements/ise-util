@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-2004 Picture Elements, Inc.
+ * Copyright (c) 1997-2011 Picture Elements, Inc.
  *    Stephen Williams (steve@picturel.com)
  *
  *    This source code is free software; you can redistribute it
@@ -73,6 +73,27 @@ void cancel_time_delay(struct timer_list*tim)
       del_timer(tim);
 }
 
+static void set_instance_to_dev(struct pci_dev*dev, struct Instance*xsp)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+      dev->dev.platform_data = xsp;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
+      dev->dev.driver_data = xsp;
+#else
+      dev->driver_data = xsp;
+#endif
+}
+
+static struct Instance* get_instance_from_dev(struct pci_dev*dev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+      return (struct Instance*)dev->dev.platform_data;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
+      return (struct Instance*)dev->dev.driver_data;
+#else
+      return (struct Instance*)dev->driver_data;
+#endif
+}
 
 #ifndef DEVICE_MAX
 # define DEVICE_MAX 4
@@ -778,12 +799,12 @@ static int ise_probe(struct pci_dev*dev, const struct pci_device_id*id)
       xsp->number = num_dev;
       xsp->pci = dev;
       ucr_init_instance(xsp);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
-      dev->dev.driver_data = xsp;
-#else
-      dev->driver_data = xsp;
-#endif
-      pci_enable_device(xsp->pci);
+      set_instance_to_dev(dev, xsp);
+      rc = pci_enable_device(xsp->pci);
+      if (rc < 0) {
+	    printk(KERN_INFO DEVICE_NAME "%u: Device FAILED TO ENABLE, rc=%d\n",
+		   num_dev, rc);
+      }
 
       printk(KERN_INFO DEVICE_NAME "%u: Found device at BAR0=0x%lx-0x%lx IRQ=%u\n",
 	     num_dev, (unsigned long)pci_resource_start(dev, 0),
@@ -818,11 +839,7 @@ static int ise_probe(struct pci_dev*dev, const struct pci_device_id*id)
 
 static void ise_remove(struct pci_dev*dev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
-      struct Instance*xsp = dev->dev.driver_data;
-#else
-      struct Instance*xsp = dev->driver_data;
-#endif
+      struct Instance*xsp = get_instance_from_dev(dev);
 
       dev_clear_hardware(xsp);
       free_irq(xsp->pci->irq, xsp);
