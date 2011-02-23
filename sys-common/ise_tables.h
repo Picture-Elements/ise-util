@@ -27,9 +27,7 @@
  *    binary (compiled) form. If you have not received it, contact
  *    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
  */
-#if !defined(WINNT)
-#ident "$Id: ise_tables.h,v 1.3 2009/02/05 17:06:57 steve Exp $"
-#endif
+
 
 #ifdef WINNT
 /* MS products deal with processor compatibility by defining them to

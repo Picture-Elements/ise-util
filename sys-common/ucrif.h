@@ -27,9 +27,7 @@
  *    binary (compiled) form. If you have not received it, contact
  *    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
  */
-#if !defined(WINNT)
-#ident "$Id: ucrif.h,v 1.6 2008/12/10 21:21:41 steve Exp $"
-#endif
+
 /*
  * This is the interface for the ucr channel driver.
  *
