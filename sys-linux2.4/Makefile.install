@@ -27,9 +27,9 @@ modules_install: ise.ko
 $(includedir)/ucrif.h: $M/../sys-common/ucrif.h
 	$(INSTALL_DATA) $M/../sys-common/ucrif.h $(includedir)/ucrif.h
 
-installdirs: mkinstalldirs
+installdirs: $M/mkinstalldirs
 	$M/mkinstalldirs $(includedir) $(tsrcdir)/sys-common $(tsrcdir)/sys-linux
-src_install: \
+src_install: installdirs \
    $(tsrcdir)/sys-common/ise_tables.h \
    $(tsrcdir)/sys-common/protocol.txt \
    $(tsrcdir)/sys-common/ucrif.h \
