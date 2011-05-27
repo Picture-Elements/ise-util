@@ -419,11 +419,11 @@ static ssize_t xxwrite(struct file*file, const char*bytes,
 
       return rc;
 }
-static int xxioctl(struct inode *inode, struct file *file,
-		   unsigned int cmd, unsigned long arg)
+
+static long xxioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-      unsigned minor = MINOR(inode->i_rdev) & 0x7f;
-      int control_flag = (MINOR(inode->i_rdev) & 0x80) != 0;
+      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
+      int control_flag = (MINOR(file->f_dentry->d_inode->i_rdev) & 0x80) != 0;
       struct Instance*xsp = inst + minor;
       struct ChannelData*xpd = (struct ChannelData*)file->private_data;
 
@@ -695,7 +695,7 @@ static struct file_operations ise_ops = {
       read:  xxread,
       write: xxwrite,
       poll:  xxselect,
-      ioctl: xxioctl,
+      unlocked_ioctl: xxioctl,
       mmap:  xxmmap,
       open:  xxopen,
       release: xxrelease,
