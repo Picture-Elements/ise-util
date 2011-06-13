@@ -2,22 +2,25 @@
 # --
 # This makefile only builds the .dll files.
 #
+CC=i686-w64-mingw32-gcc
+DLLTOOL=i686-w64-mingw32-dlltool
+WINDRES=i686-w64-mingw32-windres
 
 all: libiseio.dll
 
 OBJ = libiseio.obj libiseio-res.o
 
 libiseio.dll libiseio.a libiseio.lib: $(OBJ) libiseio.def
-	mingw32-gcc -shared -Wl,--out-implib,libiseio.a -o$@ $(OBJ)
-	dlltool --dllname libiseio.dll --input-def libiseio.def --output-lib libiseio.lib --kill-at
+	$(CC) -shared -Wl,--out-implib,libiseio.a -o$@ $(OBJ)
+	$(DLLTOOL) --dllname libiseio.dll --input-def libiseio.def --output-lib libiseio.lib --kill-at
 	: lib /machine:i386 /def:libiseio.def
 
 
 libiseio-res.o: libiseio.rc
-	windres -o libiseio-res.o -i libiseio.rc
+	$(WINDRES) -o libiseio-res.o -i libiseio.rc
 
 clean:
 	del *.obj *.dll *.exp *.lib *.res
 
 libiseio.obj: libiseio.c ../libiseio.h ../../sys-common/ucrif.h
-	mingw32-gcc -c -shared -I.. -I../../sys-common -olibiseio.obj libiseio.c
+	$(CC) -c -shared -I.. -I../../sys-common -olibiseio.obj libiseio.c
