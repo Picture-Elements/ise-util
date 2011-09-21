@@ -19,6 +19,7 @@ To install the module and modprobe hooks, use the Makefile.install
 makefile like so:
 
   # make -f Makefile.install src_install modules_install
+  # chkconfig -a ise
 
 * kernel 2.4
 

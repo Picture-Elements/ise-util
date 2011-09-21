@@ -1,6 +1,0 @@
-# EJSE
-SUBSYSTEM=="pci" ATTR{vendor}=="0x12c5" ATTR{device}=="0x0091" RUN+="/bin/sh @tsrcdir@/sys-linux/make_node.sh"
-
-# JSE
-SUBSYSTEM=="pci" ATTR{vendor}=="0x8086" ATTR{device}=="0xb555" ATTR{subsystem_vendor}=="0x12c5" ATTR{subsystem_device}="0x008a" RUN+="/bin/sh @tsrcdir@/sys-linux/make_node.sh"
-

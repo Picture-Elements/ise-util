@@ -43,8 +43,7 @@ src_install: installdirs \
    $(tsrcdir)/sys-linux/os.h \
    $(tsrcdir)/sys-linux/ucrpriv.h \
    $(tsrcdir)/sys-linux/Makefile \
-   $(tsrcdir)/sys-linux/make_node.sh \
-   /etc/udev/rules.d/99-ise.rules
+   /etc/rc.d/ise
 
 
 $(tsrcdir)/sys-common/ise_tables.h: ../sys-common/ise_tables.h
@@ -80,6 +79,6 @@ $(tsrcdir)/sys-linux/Makefile: Makefile-2.6
 $(tsrcdir)/sys-linux/make_node.sh: make_node.sh
 	$(INSTALL_DATA) make_node.sh $(tsrcdir)/sys-linux/make_node.sh
 
-/etc/udev/rules.d/99-ise.rules: udev-ise.rules
-	sed -e 's;@tsrcdir@;$(tsrcdir);' udev-ise.rules > /etc/udev/rules.d/99-ise.rules
-	chmod +x /etc/udev/rules.d/99-ise.rules
+/etc/rc.d/ise: startup.sh
+	cp startup.sh /etc/rc.d/ise
+	chmod 0554 /etc/rc.d/ise
