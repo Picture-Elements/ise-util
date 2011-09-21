@@ -21,7 +21,7 @@
 # Description:   Probe for ISE/JSE/EJSE devices and load drivers.
 ### END INIT INFO
 
-. /etc/init.d/functions
+. /etc/rc.d/init.d/functions
 
 # Load the cmp driver and probe for devices.
 function start() {
@@ -72,19 +72,13 @@ function stop() {
 
 case "$1" in
     start)
-	action "Starting ISE/JSE driver" start
+	action $"Starting ISE/JSE driver" start
         ;;
     stop)
         # Stop daemons.
-        action "Stopping ISE/JSE driver" stop
+        action $"Stopping ISE/JSE driver" stop
         ;;
-    try-restart)
-        $0 status >/dev/null && $0 restart
-	rc_status
-	;;
     *)
 	echo "Usage: $0 {start|stop}"
         exit 1
 esac
-
-rc_exit
