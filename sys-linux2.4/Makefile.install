@@ -42,8 +42,7 @@ src_install: installdirs \
    $(tsrcdir)/sys-linux/dev_ejse.c \
    $(tsrcdir)/sys-linux/os.h \
    $(tsrcdir)/sys-linux/ucrpriv.h \
-   $(tsrcdir)/sys-linux/Makefile \
-   /etc/rc.d/ise
+   $(tsrcdir)/sys-linux/Makefile
 
 
 $(tsrcdir)/sys-common/ise_tables.h: ../sys-common/ise_tables.h
@@ -78,7 +77,3 @@ $(tsrcdir)/sys-linux/Makefile: Makefile-2.6
 
 $(tsrcdir)/sys-linux/make_node.sh: make_node.sh
 	$(INSTALL_DATA) make_node.sh $(tsrcdir)/sys-linux/make_node.sh
-
-/etc/rc.d/ise: startup.sh
-	cp startup.sh /etc/rc.d/ise
-	chmod 0554 /etc/rc.d/ise

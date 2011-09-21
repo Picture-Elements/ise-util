@@ -19,7 +19,16 @@ To install the module and modprobe hooks, use the Makefile.install
 makefile like so:
 
   # make -f Makefile.install src_install modules_install
+
+On SuSE or Debian based Linux:
+  # cp startup.sh /etc/rc.d/ise
+  # chmod 554 /etc/rc.d/ise
   # chkconfig -a ise
+
+On Redhat based Linux:
+  # cp startup.sh.redhat /etc/rc.d/init.d/ise
+  # chmod 0554 /etc/rc.d/init.d/ise
+  # chkconfig --add ise
 
 * kernel 2.4
 
