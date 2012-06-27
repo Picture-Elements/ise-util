@@ -13,7 +13,7 @@
 #
 ### BEGIN INIT INFO
 # Provides:       ISE
-# Required-Start:
+# Required-Start: $local_fs
 # Required-Stop:
 # Default-Start:  2 3 5
 # Default-Stop:
