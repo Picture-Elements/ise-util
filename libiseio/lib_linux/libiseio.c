@@ -87,8 +87,8 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
       struct ise_channel ch0;
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: **** ise_restart(...,%s)\n",
-		    dev->id, firm);
+	    fprintf(__ise_logfile, "%s: **** ise_restart(...,%s)\n",
+		    dev->id_str, firm);
 
       dev->fun->restart(dev);
       
@@ -96,7 +96,7 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 	   the firmware. */
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: open channel 0\n", dev->id);
+	    fprintf(__ise_logfile, "%s: open channel 0\n", dev->id_str);
 
       ch0.next = 0;
       ch0.cid  = 0;
@@ -112,31 +112,31 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 
       sprintf(path, "./%s.scof", firm);
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: try firmware %s\n",
-		    dev->id, path);
+	    fprintf(__ise_logfile, "%s: try firmware %s\n",
+		    dev->id_str, path);
 
       fd = open(path, O_RDONLY, 0);
       if (fd < 0) {
 	    sprintf(path, FIRM_ROOT "/%s.scof", firm);
 
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: try firmware %s\n",
-			  dev->id, path);
+		  fprintf(__ise_logfile, "%s: try firmware %s\n",
+			  dev->id_str, path);
 
 	    fd = open(path, O_RDONLY, 0);
       }
 
       if (fd < 0) {
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: **** No firmware, "
-			  "giving up.\n", dev->id, path);
+		  fprintf(__ise_logfile, "%s: **** No firmware, "
+			  "giving up.\n", dev->id_str, path);
 
 	    dev->fun->channel_close(dev, &ch0);
 	    return ISE_NO_SCOF;
       }
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: transmitting firmware\n", dev->id);
+	    fprintf(__ise_logfile, "%s: transmitting firmware\n", dev->id_str);
 
 	/* In a loop, read bytes of the SCOF file and write them into
 	   channel 0. This causes the flash to load the firmware into
@@ -150,7 +150,7 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
       close(fd);
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u: sync channel 0...\n", dev->id);
+	    fprintf(__ise_logfile, "%s: sync channel 0...\n", dev->id_str);
 	    fflush(__ise_logfile);
       }
 
@@ -162,7 +162,7 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
       dev->fun->channel_close(dev, &ch0);
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u: running program\n", dev->id);
+	    fprintf(__ise_logfile, "%s: running program\n", dev->id_str);
 	    fflush(__ise_logfile);
       }
 
@@ -230,8 +230,8 @@ ise_error_t ise_writeln(struct ise_handle*dev, unsigned cid,
 	    return ISE_NO_CHANNEL;
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u.%u: writeln(%s)\n",
-		    dev->id, chn->cid, text);
+	    fprintf(__ise_logfile, "%s.%u: writeln(%s)\n",
+		    dev->id_str, chn->cid, text);
 	    fflush(__ise_logfile);
       }
 
@@ -249,8 +249,8 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 	    return ISE_NO_CHANNEL;
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u.%u: readln...\n",
-		    dev->id, chn->cid, buf);
+	    fprintf(__ise_logfile, "%s.%u: readln...\n",
+		    dev->id_str, chn->cid, buf);
 	    fflush(__ise_logfile);
       }
 
@@ -264,8 +264,8 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 			*bp = 0;
 
 			if (__ise_logfile) {
-			      fprintf(__ise_logfile, "ise%u.%u: readln -->%s\n",
-				      dev->id, chn->cid, buf);
+			      fprintf(__ise_logfile, "%s.%u: readln -->%s\n",
+				      dev->id_str, chn->cid, buf);
 			      fflush(__ise_logfile);
 			}
 
@@ -275,8 +275,8 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 	    }
 
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u.%u: read more data...\n",
-			  dev->id, chn->cid);
+		  fprintf(__ise_logfile, "%s.%u: read more data...\n",
+			  dev->id_str, chn->cid);
 		  fflush(__ise_logfile);
 	    }
 
@@ -285,8 +285,8 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
 	    if (rc != ISE_OK) {
 		  *bp = 0;
 		  if (__ise_logfile) {
-			fprintf(__ise_logfile, "ise%u.%u: readln read error\n",
-				dev->id, chn->cid);
+			fprintf(__ise_logfile, "%s.%u: readln read error\n",
+				dev->id_str, chn->cid);
 			fflush(__ise_logfile);
 		  }
 
@@ -297,8 +297,8 @@ ise_error_t ise_readln(struct ise_handle*dev, unsigned cid,
       } while (bp < (buf+nbuf));
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u.%u: readln buffer overrun\n",
-		    dev->id, chn->cid, buf);
+	    fprintf(__ise_logfile, "%s.%u: readln buffer overrun\n",
+		    dev->id_str, chn->cid, buf);
 	    fflush(__ise_logfile);
       }
 
@@ -338,27 +338,22 @@ struct ise_handle*ise_bind(const char*name)
       if (__ise_logfile)
 	    fprintf(__ise_logfile, "ise: **** ise_bind(%s)\n", name);
 
-      if (name[0] != 'i') return 0;
-      if (name[1] != 's') return 0;
-      if (name[2] != 'e') return 0;
-      if (name[3] ==  0 ) return 0;
-
-      { const char*cp = name+3;
-        while (*cp) {
-	      if (! isdigit(*cp)) return 0;
-	      id *= 10;
-	      id += *cp - '0';
-	      cp += 1;
-	}
-      }
-
       dev = calloc(1, sizeof(struct ise_handle));
-      dev->id = id;
+      dev->id_str = strdup(name);
       dev->version = 0;
       dev->isex = -1;
       dev->clist = 0;
 
-      dev->fun = &__driver_ise;
+      if (__driver_ise.probe_id(dev) != 0)
+	    dev->fun = &__driver_ise;
+      else if (__driver_plug.probe_id(dev) != 0)
+	    dev->fun = &__driver_plug;
+      else {
+	    free(dev->id_str);
+	    free(dev);
+	    return 0;
+      }
+
 
       return dev;
 }
@@ -379,19 +374,20 @@ struct ise_handle*ise_open(const char*name)
       if (rc != ISE_OK) {
 
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: Control file failed.\n", dev->id);
+		  fprintf(__ise_logfile, "%s: Control file failed.\n", dev->id_str);
 
+	    free(dev->id_str);
 	    free(dev);
 	    return 0;
       }
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: Restart device\n", dev->id);
+	    fprintf(__ise_logfile, "%s: Restart device\n", dev->id_str);
 
       dev->fun->restart(dev);
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: Open ise%u monitor port\n", dev->id, dev->id);
+	    fprintf(__ise_logfile, "%s: Open monitor port\n", dev->id_str);
 
       mon.fd = -1;
       mon.cid = 254;
@@ -400,7 +396,7 @@ struct ise_handle*ise_open(const char*name)
       rc = dev->fun->channel_open(dev, &mon);
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: reading ident data\n", dev->id);
+	    fprintf(__ise_logfile, "%s: reading ident data\n", dev->id_str);
 
       dev->fun->writeln(dev, &mon, "");
 
@@ -462,13 +458,13 @@ struct ise_handle*ise_open(const char*name)
       dev->fun->channel_close(dev, &mon);
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: Restart device\n", dev->id);
+	    fprintf(__ise_logfile, "%s: Restart device\n", dev->id_str);
 
       dev->fun->restart(dev);
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: ise_open(%s) complete.\n",
-		    dev->id, name);
+	    fprintf(__ise_logfile, "%s: ise_open(%s) complete.\n",
+		    dev->id_str, name);
 
       return dev;
 }
@@ -478,15 +474,15 @@ void ise_close(struct ise_handle*dev)
       unsigned idx;
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: **** ise_close\n", dev->id);
+	    fprintf(__ise_logfile, "%s: **** ise_close\n", dev->id_str);
 
       for (idx = 0 ;  idx < 16 ;  idx += 1) {
 	    if (dev->frame[idx].base == 0)
 		  continue;
 
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: delete frame %u\n",
-			  dev->id, idx);
+		  fprintf(__ise_logfile, "%s: delete frame %u\n",
+			  dev->id_str, idx);
 
 	    ise_delete_frame(dev, idx);
       }
@@ -496,8 +492,8 @@ void ise_close(struct ise_handle*dev)
 	    dev->clist = chn->next;
 
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: Close channel %u\n",
-			  dev->id, chn->cid);
+		  fprintf(__ise_logfile, "%s: Close channel %u\n",
+			  dev->id_str, chn->cid);
 
 	    dev->fun->channel_close(dev, chn);
 	    free(chn);
@@ -505,7 +501,7 @@ void ise_close(struct ise_handle*dev)
 
       if (dev->version) {
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: Reset board.\n", dev->id);
+		  fprintf(__ise_logfile, "%s: Reset board.\n", dev->id_str);
 
 	    dev->fun->restart(dev);
 
@@ -515,14 +511,15 @@ void ise_close(struct ise_handle*dev)
 	      /* If the board was opened by ise_bind, then skip the
 		 reset. */
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u: Opened by ise_bind, "
-			  "so skipping reset.\n", dev->id);
+		  fprintf(__ise_logfile, "%s: Opened by ise_bind, "
+			  "so skipping reset.\n", dev->id_str);
 		  fflush(__ise_logfile);
 	    }
       }
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: **** ise_close complete\n", dev->id);
+	    fprintf(__ise_logfile, "%s: **** ise_close complete\n", dev->id_str);
 
+      free(dev->id_str);
       free(dev);
 }

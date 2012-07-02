@@ -15,6 +15,13 @@ libiseio/lib_linux/configure
 libiseio/lib_linux/config.log
 libiseio/lib_linux/config.status
 libiseio/lib_linux/Makefile
+libiseio/lib_windows/libiseio.a
+libiseio/lib_windows/libiseio.dll
+libiseio/lib_windows/libiseio.lib
+libiseio/lib_windows/libiseio.obj
+# libiseio_plug
+libiseio_plug/lib_linux/libiseio_plug.a
+libiseio_plug/stub/stub.plg
 # sys-linux2.4/
 sys-linux2.4/Makefile
 sys-linux2.4/configure

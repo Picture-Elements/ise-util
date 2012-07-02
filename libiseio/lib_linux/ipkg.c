@@ -119,7 +119,7 @@ ise_error_t ise_send_package(struct ise_handle*dev, const char*pkg_name,
       ise_readln(dev, 1, buf, sizeof buf);
       while (strcmp(buf, "*done*") != 0) {
 	    if (__ise_logfile)
-		  fprintf(__ise_logfile, "ise%u: package: %s\n", dev->id, buf);
+		  fprintf(__ise_logfile, "%s: package: %s\n", dev->id_str, buf);
 	    if (status_msgs)
 		  status_msgs(buf);
 	    ise_readln(dev, 1, buf, sizeof buf);

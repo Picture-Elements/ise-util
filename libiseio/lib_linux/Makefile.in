@@ -1,14 +1,12 @@
 # --
-# Copyright (c) 2000-2009 Picture Elements, Inc.
+# Copyright (c) 2000-2009,2012 Picture Elements, Inc.
 # Stephen Williams (steve@picturel.com)
 #
 #    This source code is free software; you can redistribute it
 #    and/or modify it in source code form under the terms of the GNU
 #    General Public License as published by the Free Software
 #    Foundation; either version 2 of the License, or (at your option)
-#    any later version. In order to redistribute the software in
-#    binary form, you will need a Picture Elements Binary Software
-#    License.
+#    any later version.
 #
 #    This program is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,12 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
-#
-#    You should also have recieved a copy of the Picture Elements
-#    Binary Software License offer along with the source. This offer
-#    allows you to obtain the right to redistribute the software in
-#    binary (compiled) form. If you have not received it, contact
-#    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
 
 SHELL = /bin/sh
 
@@ -31,8 +23,9 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 srcdir = @srcdir@
 libdir = $(exec_prefix)/lib
-bindir = $(exec_prefix)/bin
-includedir = $(prefix)/include
+bindir = @bindir@
+includedir = @includedir@
+localstatedir = @localstatedir@
 
 VPATH = $(srcdir)
 
@@ -43,13 +36,15 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
-CPPFLAGS = @CPPFLAGS@ @DEFS@ -I../ -I$(includedir)
+pipesdir = $(localstatedir)/iseio/plug
+
+CPPFLAGS = @CPPFLAGS@ @DEFS@ -I../ -I$(includedir) -DISEIO_VAR_PIPES="\"$(pipesdir)\""
 CFLAGS = -O -fPIC
 LDFLAGS = @LDFLAGS@
 
 all: libiseio.so
 
-O = libiseio.o ise.o ipkg.o
+O = libiseio.o ise.o plug.o ipkg.o
 
 libiseio.so: $O
 	cc -shared -o libiseio.so $O
@@ -57,7 +52,7 @@ libiseio.so: $O
 install: all installdirs $(libdir)/libiseio.so $(includedir)/libiseio.h
 
 installdirs: mkinstalldirs
-	$(srcdir)/mkinstalldirs $(bindir) $(libdir) $(includedir)
+	$(srcdir)/mkinstalldirs $(bindir) $(libdir) $(includedir) $(localstatedir)/iseio/plug
 
 $(libdir)/libiseio.so: libiseio.so
 	$(INSTALL_PROGRAM) libiseio.so $(libdir)/libiseio.so
@@ -77,4 +72,5 @@ distclean: clean
 
 libiseio.o: libiseio.c priv.h ../libiseio.h
 ise.o:      ise.c priv.h ../libiseio.h
+plug.o:     plug.c priv.h ../libiseio.h
 ipkg.o:     ipkg.c priv.h ../libiseio.h

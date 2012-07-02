@@ -43,15 +43,37 @@
 # include  <sys/types.h>
 # include  <errno.h>
 
+static unsigned get_board_id(struct ise_handle*dev)
+{
+      return strtoul(dev->id_str+3,0,10);
+}
+
+static int probe_id_ise(struct ise_handle*dev)
+{
+      char*cp;
+      if (dev->id_str[0] != 'i') return 0;
+      if (dev->id_str[1] != 's') return 0;
+      if (dev->id_str[2] != 'e') return 0;
+      if (dev->id_str[3] ==  0 ) return 0;
+
+      cp = dev->id_str+3;
+      while (*cp) {
+	    if (! isdigit(*cp)) return 0;
+	    cp += 1;
+      }
+
+      return 1;
+}
+
 static ise_error_t connect_ise(struct ise_handle*dev)
 {
       char pathx[16];
 
-      sprintf(pathx, "/dev/isex%u", dev->id);
+      sprintf(pathx, "/dev/isex%u", get_board_id(dev));
 
       if (__ise_logfile)
-	    fprintf(__ise_logfile, "ise%u: Opening control device %s\n",
-		    dev->id, pathx);
+	    fprintf(__ise_logfile, "%s: Opening control device %s\n",
+		    dev->id_str, pathx);
 
       dev->isex = open(pathx, O_RDWR, 0);
 
@@ -81,8 +103,8 @@ static ise_error_t run_program_ise(struct ise_handle*dev)
 	    if (rc >= 0) break;
 
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u: run failed, errno=%d"
-			  " (wait_count=%u)\n", dev->id, errno, wait_count);
+		  fprintf(__ise_logfile, "%s: run failed, errno=%d"
+			  " (wait_count=%u)\n", dev->id_str, errno, wait_count);
 		  fflush(__ise_logfile);
 	    }
 
@@ -93,8 +115,8 @@ static ise_error_t run_program_ise(struct ise_handle*dev)
       if (rc >= 0) {
 
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u: **** ise_restart complete\n",
-			  dev->id);
+		  fprintf(__ise_logfile, "%s: **** ise_restart complete\n",
+			  dev->id_str);
 		  fflush(__ise_logfile);
 	    }
 
@@ -103,8 +125,8 @@ static ise_error_t run_program_ise(struct ise_handle*dev)
       } else {
 
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u: **** ise_restart failed"
-			  " errno=%d\n", dev->id, errno);
+		  fprintf(__ise_logfile, "%s: **** ise_restart failed"
+			  " errno=%d\n", dev->id_str, errno);
 		  fflush(__ise_logfile);
 	    }
 
@@ -119,7 +141,7 @@ static ise_error_t channel_open_ise(struct ise_handle*dev,
       int rc;
 
       char path[32];
-      sprintf(path, "/dev/ise%u", dev->id);
+      sprintf(path, "/dev/ise%u", get_board_id(dev));
       fd = open(path, O_RDWR, 0);
 
       if (fd < 0)
@@ -219,8 +241,8 @@ static ise_error_t writeln_ise(struct ise_handle*dev,
       rc = write(chn->fd, &nl, 1);
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u.%u: writeln FLUSH\n",
-		    dev->id, chn->cid);
+	    fprintf(__ise_logfile, "%s.%u: writeln FLUSH\n",
+		    dev->id_str, chn->cid);
 	    fflush(__ise_logfile);
       }
 
@@ -237,15 +259,15 @@ static ise_error_t readbuf_ise(struct ise_handle*dev,
       rc = read(chn->fd, chn->buf, sizeof chn->buf);
 
       if (__ise_logfile) {
-	    fprintf(__ise_logfile, "ise%u.%u: read returned (%d)...\n",
-		    dev->id, chn->cid, rc);
+	    fprintf(__ise_logfile, "%s.%u: read returned (%d)...\n",
+		    dev->id_str, chn->cid, rc);
 	    fflush(__ise_logfile);
       }
 
       if (rc <= 0) {
 	    if (__ise_logfile) {
-		  fprintf(__ise_logfile, "ise%u.%u: readln read error\n",
-			  dev->id, chn->cid);
+		  fprintf(__ise_logfile, "%s.%u: readln read error\n",
+			  dev->id_str, chn->cid);
 		  fflush(__ise_logfile);
 	    }
 
@@ -259,6 +281,7 @@ static ise_error_t readbuf_ise(struct ise_handle*dev,
 
 
 const struct ise_driver_functions __driver_ise = {
+ probe_id: probe_id_ise,
  connect: connect_ise,
  restart: restart_ise,
  run_program: run_program_ise,

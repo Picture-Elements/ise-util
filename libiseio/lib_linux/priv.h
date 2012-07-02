@@ -1,16 +1,14 @@
 #ifndef __priv_H
 #define __priv_H
 /*
- * Copyright (c) 2009 Picture Elements, Inc.
+ * Copyright (c) 2009,2012 Picture Elements, Inc.
  *    Stephen Williams (steve@icarus.com)
  *
  *    This source code is free software; you can redistribute it
  *    and/or modify it in source code form under the terms of the GNU
  *    General Public License as published by the Free Software
  *    Foundation; either version 2 of the License, or (at your option)
- *    any later version. In order to redistribute the software in
- *    binary form, you will need a Picture Elements Binary Software
- *    License.
+ *    any later version.
  *
  *    This program is distributed in the hope that it will be useful,
  *    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,12 +18,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
- *  ---
- *    You should also have recieved a copy of the Picture Elements
- *    Binary Software License offer along with the source. This offer
- *    allows you to obtain the right to redistribute the software in
- *    binary (compiled) form. If you have not received it, contact
- *    Picture Elements, Inc., 777 Panoramic Way, Berkeley, CA 94704.
  */
 
 # include  <stddef.h>
@@ -40,7 +32,7 @@ struct ise_channel {
 };
 
 struct ise_handle {
-      unsigned id;
+      char*id_str;
       int isex;
       char*version;
       struct ise_channel*clist;
@@ -59,6 +51,11 @@ extern struct ise_channel*__ise_find_channel(struct ise_handle*dev, unsigned cid
 
 
 struct ise_driver_functions {
+
+	/* Check if the id string passed to the device suites this
+	   driver. If not, then return 0. Otherwise, return !0. This
+	   is only called once during ise_bind. */
+      int(*probe_id)(struct ise_handle*dev);
 
 	/* Connect to the control channel for the bound board. */
       ise_error_t (*connect)(struct ise_handle*dev);
@@ -100,5 +97,6 @@ struct ise_driver_functions {
 };
 
 extern const struct ise_driver_functions __driver_ise;
+extern const struct ise_driver_functions __driver_plug;
 
 #endif
