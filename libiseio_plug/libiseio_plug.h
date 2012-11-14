@@ -109,4 +109,75 @@ EXTERN void ise_plug_frame_unlock(const struct ise_plug_frame*info);
  */
 EXTERN void ise_plug_application(void*data, size_t ndata);
 
+/* **** **** */
+
+/*
+ * What all this means...
+ *
+ * The libiseio_plug provides an alternative target for the libiseio.h
+ * API that applications use. The application that uses libiseio.h
+ * sees the image processing engine as a remote device that has a
+ * collection of communications channels for command/control, and some
+ * shared memory for bulk data transfer.
+ *
+ * The application opens a device with the ise_open function. When the
+ * device is an SSE/JSE device, the function call is something like
+ * this:
+ *
+ *   struct ise_handle*dev = ise_open("ise0");
+ *
+ * If the device name is of the form "ise<N>" then an ISE/SSE/JSE
+ * board is opened, and the libiseio_plug does not factor.
+ *
+ * But if the device name is of the form "plug:<name>" then the
+ * libiseio library will name the <name> to be the name of an
+ * executable in a predefined location. This program is built using
+ * this libiseio_plug.h API.
+ *
+ * - struct ise_handle*dev = ise_open(("plug:<name>");
+ * The ise_open("plug:<name>") function loads the plugin by executing
+ * its binary and connecting to command channels. If the plugin
+ * program is not found or won't execute, then the ise_open function
+ * returns a nil handle.
+ *
+ * The ise_open checks that the plug-in starts by sending an OPEN
+ * command through a command channel that is created as part of the
+ * ise_open process. The libiseio_plug library handles this OPEN
+ * command internally, sets up internal state, and acknowledges the
+ * command. After the acknowledgement, the ise_open returns with the
+ * dev handle.
+ *
+ * - struct ise_handle*dev = ise_bind("plug:<name>");
+ * The ise_bind function does not apply to plugins. Do not use it.
+ *
+ * - const char*txt = ise_prom_version(dev);
+ * ???
+ *
+ * - ise_restart(dev, "firm");
+ * This sends a start command to the plug-in process, which causes it
+ * to create a thread to call the ise_plug_application. The function
+ * is provided by the plug-in writer to give the plug-in its behavior.
+ * This does NOT download an actual firmware when talking with a
+ * plug-in.
+ *
+ * - ise_writeln
+ * - ise_readln
+ * The application uses these functions to send commands to and
+ * receive responses from the ISE/SSE/JSE firmware. In the plug-in
+ * context, the ise_writeln function provides data that the plug-in
+ * can read with the ise_plug_readln() function, and vis versa with
+ * ise_plug_writeln an ise_readln.
+ *
+ * - ise_make_frame / ise_delete_frame
+ * The application uses these functions to manage shared memory
+ * buffers. These cause commands to be sent to the plug-in, where the
+ * libiseio_plug library handles the frame binding transparently. The
+ * plug-in code accesses these frames using the ise_plug_frame_lock
+ * function.
+ *
+ * - ise_close
+ * This closes all the channels to the plug_in and invokes a
+ * restart. (NOTE: Not implemented yet.)
+ */
+
 #endif
