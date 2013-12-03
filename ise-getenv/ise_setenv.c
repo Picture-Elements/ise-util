@@ -88,6 +88,8 @@ main(int argc, char*argv[])
 	    firmware = "environ-i960_sse";
       else if (strncmp(ise_prom_version(dev), "JSE", 3) == 0)
 	    firmware = "environ-jse";
+      else if (strncmp(ise_prom_version(dev), "ZJSE", 4) == 0)
+	    firmware = "environ-zjse";
       else
 	    firmware = "environ-i960_ise";
 
