@@ -658,7 +658,9 @@ static int xxmmap(struct file*file, struct vm_area_struct*vma)
 		   "vm_end=%08lx\n", xsp->number, vma_offset,
 		   vma->vm_start, vma->vm_end);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+      vma->vm_flags |= VM_IO | VM_LOCKED | VM_DONTEXPAND | VM_DONTDUMP;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
       vma->vm_flags |= VM_IO|VM_RESERVED;
 #else
       vma->vm_flags |= VM_LOCKED;
