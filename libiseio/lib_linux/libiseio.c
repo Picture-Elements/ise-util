@@ -203,8 +203,19 @@ void* ise_make_frame(struct ise_handle*dev, unsigned id, size_t*siz)
 
       dev->frame[id].size = *siz;
       rc = dev->fun->make_frame(dev, id);
-      if (rc != ISE_OK)
+      if (rc != ISE_OK) {
+	    if (__ise_logfile) {
+		  fprintf(__ise_logfile, "%s: Unable to make frame %u\n", dev->id_str, id);
+		  fflush(__ise_logfile);
+	    }
 	    return 0;
+      }
+
+      if (__ise_logfile) {
+	    fprintf(__ise_logfile, "%s: Make frame %u is %zu (0x%zx) bytes\n",
+		    dev->id_str, id, dev->frame[id].size, dev->frame[id].size);
+	    fflush(__ise_logfile);
+      }
 
       *siz = dev->frame[id].size;
       return dev->frame[id].base;
