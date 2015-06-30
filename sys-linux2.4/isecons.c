@@ -199,6 +199,27 @@ static int isecons_write(struct file*file, const char __user*buffer,
 	    return count;
       }
 
+      if (strncmp(line_buffer, "<dump-root>", 11) == 0) {
+	    int idx;
+	    struct Instance*xsp = ucr_find_board_instance(0);
+	    if (xsp->root == 0) {
+		  isecons_log("NO ROOT TABLE\n");
+		  return count;
+	    }
+
+	    isecons_log("root magic: 0x%08x:%08x\n", xsp->root->magic, xsp->root->self);
+	    for (idx = 0 ; idx < 16 ; idx += 1) {
+		  isecons_log("frame[%2d]: 0x%08x:%08x\n", idx,
+			      xsp->root->frame_table[idx].ptr,
+			      xsp->root->frame_table[idx].magic);
+	    }
+	    for (idx = 0 ; idx < ROOT_TABLE_CHANNELS ; idx += 1) {
+		  isecons_log("chan[%3d]: 0x%08x:%08x\n", idx,
+			      xsp->root->chan[idx].ptr,
+			      xsp->root->chan[idx].magic);
+	    }
+	    return count;
+      }
       return count;
 }
 
