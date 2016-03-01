@@ -868,9 +868,13 @@ static int __init init_ise_module(void)
 {
       int rc;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
+      if (ise_limit_frame_pages == 0)
+	    ise_limit_frame_pages = get_num_physpages() / 2;
+#else
       if (ise_limit_frame_pages == 0)
 	    ise_limit_frame_pages = num_physpages / 2;
-
+#endif
       isecons_init();
 
       printk(DEVICE_NAME ": Limit frames to total of %d pages\n",
