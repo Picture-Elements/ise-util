@@ -43,12 +43,18 @@ static int isecons_write(struct file*file, const char __user*buffer,
 void isecons_init(void)
 {
       cons.log_buf = vmalloc(LOG_BUF_SIZE);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+      proc_isecons = 0; /* Not implemented:
+			   proc_create("driver/isecons",
+			   S_IFREG|S_IRUGO|S_IWUGO, 0, 0); */
+#else
       proc_isecons = create_proc_entry("driver/isecons", S_IFREG|S_IRUGO|S_IWUGO, 0);
       if (proc_isecons) {
 	    proc_isecons->read_proc = isecons_read;
 	    proc_isecons->write_proc = isecons_write;
 	    proc_isecons->data = "isecons";
       }
+#endif
 
       cons.ptr = 0;
       cons.fill = 0;
