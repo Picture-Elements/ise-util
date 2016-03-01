@@ -771,7 +771,8 @@ long ucr_read(struct Instance*xsp, struct ChannelData*xpd,
 			 "[in_off=%u]\n", xsp->number,
 			 xpd->channel, trans, siz, xpd->in_off);
 
-	    copy_to_user(bytes, (char*)buf + xpd->in_off, trans);
+	    if (copy_to_user(bytes, (char*)buf + xpd->in_off, trans) != 0)
+		  printk(DEVICE_NAME "%u.%u: copy_to_user failed reading %u bytes?\n", xsp->number, xpd->channel, trans);
 
 	    tcount -= trans;
 	    bytes += trans;
