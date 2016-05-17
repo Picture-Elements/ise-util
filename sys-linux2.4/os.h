@@ -85,4 +85,9 @@ static inline void free_real_page(struct Instance*xsp, void*ptr, dma_addr_t badd
       dma_free_coherent(&xsp->pci->dev, PAGE_SIZE, ptr, baddr);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
+static inline struct inode*file_inode(struct file*filp)
+{ return filp->f_dentry->d_inode; }
+#endif
+
 #endif

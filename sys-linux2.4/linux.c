@@ -384,8 +384,8 @@ int xxrelease(struct inode *inode, struct file *file)
 static ssize_t xxread(struct file *file, char *bytes, size_t count, loff_t*off)
 {
       long rc;
-      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
-      int control_flag = (MINOR(file->f_dentry->d_inode->i_rdev) & 0x80) != 0;
+      unsigned minor = MINOR(file_inode(file)->i_rdev) & 0x7f;
+      int control_flag = (MINOR(file_inode(file)->i_rdev) & 0x80) != 0;
       struct Instance*xsp = inst + minor;
       struct ChannelData*xpd = (struct ChannelData*)file->private_data;
 
@@ -405,8 +405,8 @@ static ssize_t xxwrite(struct file*file, const char*bytes,
 		       size_t count, loff_t*off)
 {
       long rc;
-      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
-      int control_flag = (MINOR(file->f_dentry->d_inode->i_rdev) & 0x80) != 0;
+      unsigned minor = MINOR(file_inode(file)->i_rdev) & 0x7f;
+      int control_flag = (MINOR(file_inode(file)->i_rdev) & 0x80) != 0;
       struct Instance*xsp = inst + minor;
       struct ChannelData*xpd = (struct ChannelData*)file->private_data;
 
@@ -422,8 +422,8 @@ static ssize_t xxwrite(struct file*file, const char*bytes,
 
 static long xxioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
-      int control_flag = (MINOR(file->f_dentry->d_inode->i_rdev) & 0x80) != 0;
+      unsigned minor = MINOR(file_inode(file)->i_rdev) & 0x7f;
+      int control_flag = (MINOR(file_inode(file)->i_rdev) & 0x80) != 0;
       struct Instance*xsp = inst + minor;
       struct ChannelData*xpd = (struct ChannelData*)file->private_data;
 
@@ -463,7 +463,7 @@ static irqreturn_t xxirq(int irq, void *dev_id EXTRA_IRQ_ARGS)
  */
 static unsigned int xxselect(struct file*file, poll_table*pt)
 {
-      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
+      unsigned minor = MINOR(file_inode(file)->i_rdev) & 0x7f;
       struct Instance*xsp = inst + minor;
       struct ChannelData*xpd = (struct ChannelData*)file->private_data;
 
@@ -477,7 +477,7 @@ static unsigned int xxselect(struct file*file, poll_table*pt)
 
 static void xxvmopen(struct vm_area_struct*vma)
 {
-      struct inode*inode = vma->vm_file->f_dentry->d_inode;
+      struct inode*inode = file_inode(vma->vm_file);
       unsigned minor = MINOR(inode->i_rdev);
       struct Instance*xsp = inst+minor;
 
@@ -496,7 +496,7 @@ static void xxvmopen(struct vm_area_struct*vma)
 
 static void xxvmclose(struct vm_area_struct*vma)
 {
-      struct inode*inode = vma->vm_file->f_dentry->d_inode;
+      struct inode*inode = file_inode(vma->vm_file);
       unsigned minor = MINOR(inode->i_rdev);
       struct Instance*xsp = inst+minor;
 
@@ -524,7 +524,7 @@ static int xxfault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
       unsigned long offset, page_nr;
       unsigned frame_nr;
-      struct inode*inode = vma->vm_file->f_dentry->d_inode;
+      struct inode*inode = file_inode(vma->vm_file);
 
       unsigned minor = MINOR(inode->i_rdev);
       struct Instance*xsp = inst+minor;
@@ -567,7 +567,7 @@ static struct page* xxvmnopage(struct vm_area_struct*vma,
       struct page*page_out = 0;
       unsigned long offset, page_nr;
       unsigned frame_nr;
-      struct inode*inode = vma->vm_file->f_dentry->d_inode;
+      struct inode*inode = file_inode(vma->vm_file);
 
       unsigned minor = MINOR(inode->i_rdev);
       struct Instance*xsp = inst+minor;
@@ -601,7 +601,7 @@ static unsigned long xxvmnopage(struct vm_area_struct*vma,
       unsigned long offset, page_nr;
       unsigned frame_nr;
 #if LINUX_VERSION_CODE > 0x020100
-      struct inode*inode = vma->vm_file->f_dentry->d_inode;
+      struct inode*inode = file_inode(vma->vm_file);
 #else
       struct inode*inode = vma->vm_inode;
 #endif
@@ -644,7 +644,7 @@ static int xxmmap(struct file*file, struct vm_area_struct*vma)
 {
       unsigned frame_nr;
       unsigned long offset, size, frame_size;
-      unsigned minor = MINOR(file->f_dentry->d_inode->i_rdev) & 0x7f;
+      unsigned minor = MINOR(file_inode(file)->i_rdev) & 0x7f;
       struct Instance*xsp = inst+minor;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,0)
