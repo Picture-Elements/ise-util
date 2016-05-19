@@ -830,6 +830,8 @@ static int ise_probe(struct pci_dev*dev, const struct pci_device_id*id)
 	       num_dev, xsp->pci->irq);
       }
 
+      pci_set_master(xsp->pci);
+
       dev_init_hardware(xsp);
 
       printk(DEVICE_NAME "%u is a %s.\n", num_dev, xsp->dev_ops->full_name);
