@@ -35,30 +35,50 @@ static struct isecons_s {
       unsigned fill;
 } cons = { 0, 0, 0 };
 
-static int isecons_read(char*page, char**start, off_t offset, int count,
-			int*eof, void*data);
-static int isecons_write(struct file*file, const char __user*buffer,
-			 unsigned long count, void*data);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+static ssize_t consread(struct file *file, char *bytes, size_t count, loff_t*off);
+
+static ssize_t conswrite(struct file*file, const char*bytes,
+			 size_t count, loff_t*off);
+
+static struct file_operations isecons_fop = {
+ read: consread,
+ write: conswrite
+};
 
 void isecons_init(void)
 {
       cons.log_buf = vmalloc(LOG_BUF_SIZE);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
-      proc_isecons = 0; /* Not implemented:
-			   proc_create("driver/isecons",
-			   S_IFREG|S_IRUGO|S_IWUGO, 0, 0); */
+      proc_isecons = proc_create_data("driver/isecons",
+				      S_IFREG|S_IRUGO|S_IWUGO, 0,
+				      &isecons_fop, 0);
+
+      cons.ptr = 0;
+      cons.fill = 0;
+}
+
 #else
+
+static int isecons_read(char*page, char**start, off_t offset, int count,
+			int*eof, void*data);
+static int isecons_write(struct file*file, const char __user*buffer,
+			 unsigned long count, void*data);
+void isecons_init(void)
+{
+      cons.log_buf = vmalloc(LOG_BUF_SIZE);
       proc_isecons = create_proc_entry("driver/isecons", S_IFREG|S_IRUGO|S_IWUGO, 0);
       if (proc_isecons) {
 	    proc_isecons->read_proc = isecons_read;
 	    proc_isecons->write_proc = isecons_write;
 	    proc_isecons->data = "isecons";
       }
-#endif
 
       cons.ptr = 0;
       cons.fill = 0;
 }
+
+#endif
+
 
 void isecons_release(void)
 {
@@ -229,3 +249,55 @@ static int isecons_write(struct file*file, const char __user*buffer,
       return count;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+static ssize_t consread(struct file *file, char *bytes, size_t count, loff_t*off)
+{
+      static char buf[PAGE_SIZE];
+      int eof = 0;
+      ssize_t total = 0;
+      while (count > 0 && eof==0) {
+	    char*startp = 0;
+	    ssize_t rc;
+	    size_t trans = count;
+	    if (trans > sizeof buf)
+		  trans = sizeof buf;
+
+	    rc = isecons_read(buf, &startp, 0, trans, &eof, 0);
+	    if (rc > 0) {
+		  if (copy_to_user(bytes, startp, rc) != 0)
+			return -EFAULT;
+		  count -= rc;
+		  bytes += rc;
+		  total += rc;
+	    }
+      }
+
+      return total;
+}
+
+static ssize_t conswrite(struct file*file, const char*bytes,
+			 size_t count, loff_t*off)
+{
+      static char buf[PAGE_SIZE];
+      ssize_t total = 0;
+
+      while (count > 0) {
+	    int rc;
+	    size_t trans = count;
+	    if (trans > sizeof buf)
+		  trans = sizeof buf;
+
+	    if (copy_from_user(buf, bytes, trans) != 0)
+		  return -EFAULT;
+
+	    rc = isecons_write(file, buf, trans, 0);
+	    if (rc > 0) {
+		  count -= rc;
+		  total += rc;
+		  bytes += rc;
+	    }
+      }
+
+      return total;
+}
+#endif
