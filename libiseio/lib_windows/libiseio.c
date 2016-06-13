@@ -807,6 +807,11 @@ struct ise_handle* ise_open(const char*name)
       buf = malloc(4096);
       nbuf = 4096;
 
+      if (lib_logfile) {
+	    fprintf(lib_logfile, "ise%u: (d) Waiting for monitor prompt...\n", dev->id);
+	    fflush(lib_logfile);
+      }
+
 	/* Read the monitor banner message up to the first > prompt. */
       buf[0] = 0;
       while (buf[0] != '>') {
@@ -814,6 +819,11 @@ struct ise_handle* ise_open(const char*name)
       }
 
 	/* Send an [i]dent command. */
+
+      if (lib_logfile) {
+	    fprintf(lib_logfile, "ise%u: (d) Sending [i]dent command...\n", dev->id);
+	    fflush(lib_logfile);
+      }
 
       WriteFile(fd, "i\n", 2, &junk, 0);
       rc = DeviceIoControl(fd, UCR_FLUSH, 0, 0, 0, 0, &junk, 0);
@@ -852,6 +862,11 @@ struct ise_handle* ise_open(const char*name)
 	     data away as the version string. */
 	buf = realloc(buf, (cp-buf) + 1);
 	dev->version = buf;
+
+	if (lib_logfile) {
+	      fprintf(lib_logfile, "ise%u: (d) Got %d bytes of ident text\n", dev->id, (cp-buf));
+	      fflush(lib_logfile);
+	}
       }
 
       if (lib_logfile) {
