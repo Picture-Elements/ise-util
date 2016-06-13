@@ -19,12 +19,11 @@
  *    along with this program; if not, write to the Free Software
  *    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
-#ident "$Id: IsePanelMain.h,v 1.3 2008/10/08 16:10:14 steve-icarus Exp $"
 
 # include  <qapplication.h>
 # include  "ui_ise_panel.h"
 
-#if defined(_WIN32)
+#if defined(ISE_PANEL_WIN32)
 # include  <windows.h>
 #endif
 
@@ -37,7 +36,7 @@ class IsePanelMain  : public QMainWindow {
       ~IsePanelMain();
 
     private:
-# if defined(_WIN32)
+# if defined(ISE_PANEL_WIN32)
       typedef ::HANDLE handle_t;
 #else
       typedef int handle_t;
@@ -69,16 +68,4 @@ class IsePanelMain  : public QMainWindow {
       handle_t ise_cons_;
 };
 
-/*
- * $Log: IsePanelMain.h,v $
- * Revision 1.3  2008/10/08 16:10:14  steve-icarus
- *  Prevent close underneath powered off board.
- *
- * Revision 1.2  2008/10/08 00:08:37  steve-icarus
- *  Add DIAG buttons.
- *
- * Revision 1.1  2008/10/07 18:37:00  steve-icarus
- *  Add QT version of ies panel
- *
- */
 #endif

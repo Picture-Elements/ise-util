@@ -30,13 +30,13 @@
 
 using namespace std;
 
-#if defined(_WIN32)
+#if defined(ISE_PANEL_WIN32)
 const IsePanelMain::handle_t IsePanelMain::NO_DEV = INVALID_HANDLE_VALUE;
 
 IsePanelMain::handle_t IsePanelMain::open_dev_(unsigned dev_id)
 {
       char path[32];
-      sprintf(path, "\\\\.\\isex%u", dev_id);
+      snprintf(path, sizeof path, "\\\\.\\isex%u", dev_id);
       return CreateFileA(path, GENERIC_READ|GENERIC_WRITE, 0, 0,
 			 OPEN_EXISTING,
 			 FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED, 0);
