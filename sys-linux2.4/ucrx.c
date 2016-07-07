@@ -255,9 +255,13 @@ static int ucrx_diagnose(struct Instance*xsp, unsigned long arg)
 		  struct ChannelData*xpd = xsp->channels;
 		  do {
 			isecons_log(DEVICE_NAME "%u.%u: CHANNEL TABLE "
-			       "MAGIC=[%x:%x]\n", xsp->number,
-			       xpd->channel, xpd->table->magic,
-			       xpd->table->self);
+				    "MAGIC=[%x:%x] SPARE MAGIC=[%x:%x]\n",
+				    xsp->number,
+				    xpd->channel,
+				    xpd->table->magic,
+				    xpd->table->self,
+				    xpd->table->reserved,
+				    xpd->table->frame);
 
 			isecons_log(DEVICE_NAME "%u.%u: OUT "
 			       "(first=%u, next=%u, off=%u) "
@@ -316,7 +320,9 @@ static int ucrx_timeout(struct Instance*xsp, unsigned long arg)
       struct ChannelData*xpd;
       struct ucrx_timeout_s args;
 
-      copy_from_user(&args, (void*)arg, sizeof args);
+      if (copy_from_user(&args, (void*)arg, sizeof args) != 0)
+	    return -EFAULT;
+
       xpd = channel_by_id(xsp, args.id);
       if (xpd == 0)
 	    return -EINVAL;

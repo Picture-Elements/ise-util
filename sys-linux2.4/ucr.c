@@ -102,6 +102,10 @@ static struct channel_table*allocate_channel_table(struct Instance*xsp)
 	    if (xsp->channel_table_pool[idx].magic == 0) {
 		  xsp->channel_table_pool[idx].magic = CHANNEL_TABLE_MAGIC;
 		  xsp->channel_table_pool[idx].self  = xsp->channel_table_phys + idx*sizeof(struct channel_table);
+		    /* Spare copies of magic numbers.... */
+		  xsp->channel_table_pool[idx].frame = xsp->channel_table_phys + idx*sizeof(struct channel_table);
+		  xsp->channel_table_pool[idx].reserved = CHANNEL_TABLE_MAGIC;
+
 		  return xsp->channel_table_pool + idx;
 	    }
       }
@@ -124,6 +128,7 @@ static void free_channel_table(struct Instance*xsp, volatile struct channel_tabl
 
       table->magic = 0;
       table->self = 0;
+      table->reserved = 0;
 }
 
 /*
@@ -597,7 +602,6 @@ int ucr_open(struct Instance*xsp, struct ChannelData*xpd)
       init_timer(&xpd->read_timer);
 
       xpd->table = allocate_channel_table(xsp);
-      xpd->table->frame = 0;
       xpd->table->first_out_idx = 0;
       xpd->table->next_out_idx  = 0;
       xpd->table->first_in_idx  = 0;
