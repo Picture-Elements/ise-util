@@ -543,7 +543,17 @@ ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 
       rc = ReadFile(fd, path, sizeof path, &cnt, 0);
       while (cnt > 0) {
+	    if (lib_logfile) {
+		  fprintf(lib_logfile, "ise%u: ... read %u bytes from scof.\n", dev->id, cnt);
+		  fflush(lib_logfile);
+	    }
+
 	    WriteFile(ch0, path, cnt, &cnt, 0);
+	    if (lib_logfile) {
+		  fprintf(lib_logfile, "ise%u: ... wrote %u bytes to channel 0.\n", dev->id, cnt);
+		  fflush(lib_logfile);
+	    }
+
 	    rc = ReadFile(fd, path, sizeof path, &cnt, 0);
       }
 
@@ -884,8 +894,8 @@ struct ise_handle* ise_open(const char*name)
 
 
       if (lib_logfile) {
-	    fprintf(lib_logfile, "ise%u: ise_open(%s) complete.\n",
-		    dev->id, name);
+	    fprintf(lib_logfile, "ise%u: ise_open(%s) complete (RESET/RESTART rc=%d).\n",
+		    dev->id, name, rc);
 	    fflush(lib_logfile);
       }
 

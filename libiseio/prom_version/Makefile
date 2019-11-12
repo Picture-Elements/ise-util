@@ -1,5 +1,5 @@
 
-prefix=/usr
+prefix=/usr/local
 
 libdir=$(prefix)/lib
 bindir=$(prefix)/bin

@@ -2,9 +2,13 @@
 # --
 # This makefile only builds the .dll files.
 #
-CC=i686-w64-mingw32-gcc
-DLLTOOL=i686-w64-mingw32-dlltool
-WINDRES=i686-w64-mingw32-windres
+
+CROSS_PREFIX=i686-w64-mingw32
+#CROSS_PREFIX=x86_64-w64-mingw32
+
+CC=$(CROSS_PREFIX)-gcc
+DLLTOOL=$(CROSS_PREFIX)-dlltool
+WINDRES=$(CROSS_PREFIX)-windres
 
 all: libiseio.dll
 

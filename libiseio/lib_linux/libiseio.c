@@ -80,7 +80,7 @@ const char*ise_prom_version(struct ise_handle*dev)
 
 ise_error_t ise_restart(struct ise_handle*dev, const char*firm)
 {
-      char path[1024];
+      char path[4096];
       int fd, rc;
       ise_error_t rc_ise;
 
